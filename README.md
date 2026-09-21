@@ -1,6 +1,11 @@
-# Trans Semarang Live — High-Fidelity HTML Prototype
+# Trans Semarang Live — High-Fidelity HTML Prototype (V2: Tab Rute Gabungan)
 
 Prototype konsep untuk **SwitchFest 2026 UI/UX Design Competition**.
+
+> **Perubahan arsitektur:** tab **Rute** kini menggabungkan Live Map, Route Search,
+> dan Route Results V1 menjadi satu halaman — peta simulasi penuh di atas +
+> panel Ringkas/Daftar di bawah. Beranda dan fitur V1 lain (Trip, Jelajah, Profil,
+> detail halte/bus, alert) tetap dipertahankan.
 
 > “Tahu kapan bus tiba, tahu seberapa penuh, tanpa menebak.”
 
@@ -36,9 +41,13 @@ Lalu buka alamat yang ditampilkan (mis. `http://localhost:8000`).
   rekomendasi keputusan, entry live map, info layanan, disclaimer data simulasi.
 - **Layar perjalanan utama:** onboarding, detail halte, detail bus, pencarian rute,
   hasil rute, trip aktif, info layanan, Kota Lama mode, profil/pengaturan, dan aksesibilitas.
-- **Live map interaktif:** peta simulasi dengan rute Koridor 1/Koridor 2, marker halte,
-  lokasi pengguna, posisi beberapa bus, filter koridor, pilihan bus, dan detail posisi
-  bus yang dipilih. Ini merupakan live tracker konseptual; tidak memakai API GPS/map nyata.
+- **Tab Rute gabungan:** peta simulasi SVG penuh (koridor dengan pola garis berbeda,
+  halte, lokasi pengguna, bus bergerak via `requestAnimationFrame`, filter koridor,
+  freshness chip, recenter, legend) + panel Ringkas/Daftar dengan 3 tab internal
+  (Rute / Halte / Bus), search tujuan → Route A/B/C, detail rute + pilih halte
+  naik/turun, "Pilih rute/bus ini" → satu `activeTrip` di tab Trip, dan mode
+  pelacakan trip di peta ("Jelajahi rute lain" tanpa mengakhiri trip).
+  Tidak memakai API GPS/map nyata.
 - **Alur klik:** Home → Stop Detail/Bus Detail/Alert; Cari rute → hasil → trip aktif;
   bottom navigation berpindah ke Beranda/Rute/Trip/Jelajah/Profil; destination Kota Lama
   membuka pencarian rute; trip aktif memiliki progres halte interaktif.

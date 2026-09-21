@@ -226,24 +226,90 @@
           </p>
         </main>
 
-        <!-- ===================== Primary prototype screens ===================== -->
-        <main class="content screen-view screen-view--secondary" id="map-screen" data-screen="map" hidden>
-          <div class="screen-topbar"><button class="back-btn" data-go="home" aria-label="Kembali">‹</button><span>Live map</span><button class="icon-btn icon-btn--small" id="center-map" aria-label="Pusatkan peta"><svg class="icon"><use href="#i-location" /></svg></button></div>
-          <section class="map-live-header"><div><p class="eyebrow">Pelacakan langsung · simulasi</p><h1 class="screen-title">Bus di sekitarmu</h1></div><span class="live-pill"><i></i> Live</span></section>
-          <div class="map-filter-row" role="group" aria-label="Pilih rute peta"><button class="map-filter is-active" type="button" data-map-route="all">Semua bus</button><button class="map-filter" type="button" data-map-route="corridor-1">Koridor 1</button><button class="map-filter" type="button" data-map-route="corridor-2">Koridor 2</button></div>
-          <section class="live-map" id="live-map" aria-label="Peta interaktif simulasi posisi bus dan rute">
-            <div class="map-grid-lines" aria-hidden="true"></div><span class="map-road map-road--live-1" aria-hidden="true"></span><span class="map-road map-road--live-2" aria-hidden="true"></span><span class="map-road map-road--live-3" aria-hidden="true"></span>
-            <svg class="route-line route-line--blue" viewBox="0 0 360 330" preserveAspectRatio="none" aria-hidden="true"><path d="M20 264 C84 228 56 170 126 154 S185 85 340 54" /></svg>
-            <svg class="route-line route-line--coral" viewBox="0 0 360 330" preserveAspectRatio="none" aria-hidden="true"><path d="M25 55 C105 86 88 130 172 154 S250 260 342 282" /></svg>
-            <button class="map-stop map-stop--one" type="button" data-stop="Simpang Lima"><span></span><b>Simpang Lima</b></button><button class="map-stop map-stop--two" type="button" data-stop="Pahlawan"><span></span><b>Pahlawan</b></button><button class="map-stop map-stop--three" type="button" data-stop="Kota Lama"><span></span><b>Kota Lama</b></button>
-            <button class="live-bus live-bus--one" type="button" data-bus="TS-101" data-route="corridor-1" aria-label="TS-101, Koridor 1, Sepi"><svg class="icon"><use href="#i-bus" /></svg></button><button class="live-bus live-bus--two" type="button" data-bus="TS-104" data-route="corridor-1" aria-label="TS-104, Koridor 1, Padat"><svg class="icon"><use href="#i-bus" /></svg></button><button class="live-bus live-bus--three" type="button" data-bus="TS-204" data-route="corridor-2" aria-label="TS-204, Koridor 2, Sedang"><svg class="icon"><use href="#i-bus" /></svg></button>
-            <span class="user-location" aria-label="Lokasi Anda"><i></i></span><div class="map-toast" id="map-toast" aria-live="polite">Pilih bus untuk melihat detail</div>
+        <!-- ===================== Tab RUTE: map + panel gabungan ===================== -->
+        <main class="route-screen screen-view" id="route-screen" data-screen="route" hidden>
+          <!-- Peta simulasi full -->
+          <div class="route-canvas" id="route-canvas">
+            <div class="map-grid-lines" aria-hidden="true"></div>
+            <span class="map-road map-road--live-1" aria-hidden="true"></span>
+            <span class="map-road map-road--live-2" aria-hidden="true"></span>
+            <span class="map-road map-road--live-3" aria-hidden="true"></span>
+            <svg class="route-line route-line--blue" viewBox="0 0 360 430" preserveAspectRatio="none" aria-hidden="true"><path d="M20 340 C84 300 56 220 126 200 S185 110 340 70" /></svg>
+            <svg class="route-line route-line--dark" viewBox="0 0 360 430" preserveAspectRatio="none" aria-hidden="true"><path d="M25 70 C105 110 88 170 172 200 S250 340 342 360" /></svg>
+            <div id="route-stop-layer"></div>
+            <div id="route-bus-layer"></div>
+            <span class="user-location" aria-label="Lokasi Anda" role="img"><i></i></span>
+
+          <!-- Banner mode pelacakan trip (muncul saat trip aktif dilihat di peta) -->
+          <button class="trip-tracking-banner" id="trip-tracking-banner" type="button" data-tab="trip" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#i-trip" /></svg>
+            <span id="trip-tracking-text">Turun 2 halte lagi</span>
+          </button>
+
+          <!-- Floating controls atas -->
+          <div class="route-top-controls">
+              <div class="route-search-row">
+                <button class="search-bar search-bar--floating" type="button" id="route-search-bar" aria-label="Cari tujuan">
+                  <svg class="icon" aria-hidden="true"><use href="#i-search" /></svg>
+                  <span class="search-bar__text">Mau ke mana? Cari tujuan…</span>
+                </button>
+                <button class="icon-btn" type="button" data-go="alerts" aria-label="Notifikasi dan info layanan">
+                  <svg class="icon" aria-hidden="true"><use href="#i-bell" /></svg>
+                </button>
+              </div>
+              <div class="freshness freshness--floating" id="route-freshness">
+                <span class="freshness__dot" aria-hidden="true"></span>
+                <span class="freshness__text">Live · diperbarui 20 detik lalu</span>
+              </div>
+              <div class="map-filter-row" role="group" aria-label="Filter koridor">
+                <button class="map-filter is-active" type="button" data-map-route="all">Semua</button>
+                <button class="map-filter" type="button" data-map-route="corridor-1">Koridor 1</button>
+                <button class="map-filter" type="button" data-map-route="corridor-2">Koridor 2</button>
+                <button class="map-filter" type="button" data-map-route="feeder">Feeder</button>
+              </div>
+            </div>
+
+            <!-- Kontrol sisi peta -->
+            <div class="route-side-controls">
+              <button class="icon-btn map-control-btn" type="button" id="route-recenter" aria-label="Pusatkan ke lokasi saya">
+                <svg class="icon" aria-hidden="true"><use href="#i-location" /></svg>
+              </button>
+              <button class="icon-btn map-control-btn" type="button" id="route-legend-toggle" aria-label="Tampilkan legenda">
+                <svg class="icon" aria-hidden="true"><use href="#i-compass" /></svg>
+              </button>
+            </div>
+
+            <div class="map-live-legend route-legend-pop" id="route-legend" hidden>
+              <span><i class="legend-line legend-line--blue"></i>Koridor 1</span>
+              <span><i class="legend-line legend-line--dark"></i>Koridor 2</span>
+              <span><i class="legend-dot legend-dot--user"></i>Anda</span>
+              <span><i class="legend-dot legend-dot--stop"></i>Halte</span>
+            </div>
+
+            <div class="map-toast route-toast" id="route-toast" aria-live="polite">Pilih bus atau halte di peta</div>
+
+            <button class="explore-other-btn" id="explore-other-routes" type="button" hidden>Jelajahi rute lain</button>
+          </div>
+
+          <!-- Panel bawah: Ringkas / Daftar -->
+          <section class="route-panel" id="route-panel" aria-label="Panel rute">
+            <button class="panel-handle" id="panel-handle" type="button" aria-expanded="false">
+              <i aria-hidden="true"></i><span>Daftar</span>
+            </button>
+            <div class="panel-tabs" role="tablist" aria-label="Isi panel">
+              <button class="panel-tab is-active" role="tab" type="button" data-panel-tab="rute" aria-selected="true">Rute</button>
+              <button class="panel-tab" role="tab" type="button" data-panel-tab="halte" aria-selected="false">Halte</button>
+              <button class="panel-tab" role="tab" type="button" data-panel-tab="bus" aria-selected="false">Bus</button>
+            </div>
+            <div class="panel-body">
+              <div id="panel-rute" role="tabpanel"></div>
+              <div id="panel-halte" role="tabpanel" hidden></div>
+              <div id="panel-bus" role="tabpanel" hidden></div>
+            </div>
           </section>
-          <div class="map-live-legend"><span><i class="legend-line legend-line--blue"></i>Koridor 1</span><span><i class="legend-line legend-line--coral"></i>Koridor 2</span><span><i class="legend-dot legend-dot--user"></i>Anda</span></div>
-          <section class="map-bus-sheet"><div class="section__head"><h2 class="section__title">Bus aktif</h2><span class="muted">3 bus</span></div><div class="map-bus-list" id="map-bus-list"></div></section>
-          <p class="disclaimer">Posisi bus dan rute pada peta adalah data simulasi untuk prototype.</p>
         </main>
 
+        <!-- ===================== Primary prototype screens ===================== -->
         <main class="content screen-view screen-view--secondary" id="onboarding-screen" data-screen="onboarding" hidden>
           <div class="screen-header screen-header--brand"><span class="brand-mark">TS</span><span>Trans Semarang Live</span></div>
           <div class="onboarding-visual"><span class="onboarding-orbit"></span><span class="onboarding-bus"><svg class="icon"><use href="#i-bus" /></svg></span></div>
@@ -255,7 +321,7 @@
 
         <main class="content screen-view screen-view--secondary" id="stop-screen" data-screen="stop" hidden>
           <div class="screen-topbar"><button class="back-btn" data-go="home" aria-label="Kembali">‹</button><span>Detail halte</span><button class="icon-btn icon-btn--small" id="stop-favorite-detail" aria-label="Simpan halte">♡</button></div>
-          <section class="detail-hero detail-hero--sky"><span class="detail-icon"><svg class="icon"><use href="#i-location" /></svg></span><p class="eyebrow">Halte terdekat · 120 m</p><h1 class="screen-title">Halte Simpang Lima</h1><p class="muted">Arah Kota Lama · Koridor 1</p></section>
+          <section class="detail-hero detail-hero--sky"><span class="detail-icon"><svg class="icon"><use href="#i-location" /></svg></span><p class="eyebrow">Halte terdekat · 120 m</p><h1 class="screen-title">Halte Simpang Lima</h1><p class="muted">Arah Kota Lama · Koridor 1</p><button class="btn btn--primary btn--full" type="button" data-focus-stop="stop-simpanglima">Lihat di peta</button></section>
           <div class="info-row"><span><strong>3</strong><small>bus mendatang</small></span><span><strong>120 m</strong><small>jarak berjalan</small></span><span><strong>Ya</strong><small>akses tersedia*</small></span></div>
           <section class="section"><div class="section__head"><h2 class="section__title">Bus berikutnya</h2><span class="status-label">● live</span></div><ul class="detail-bus-list" id="stop-buses"></ul></section>
           <p class="disclaimer">*Informasi aksesibilitas adalah skenario konsep dan perlu validasi infrastruktur.</p>
@@ -269,21 +335,8 @@
           <section class="section"><h2 class="section__title">Halte berikutnya</h2><div class="next-stop-card"><span class="next-stop-card__number">01</span><div><strong>Halte Pahlawan</strong><p class="muted">sekitar 2–4 menit lagi</p></div><svg class="icon"><use href="#i-chevron" /></svg></div></section>
         </main>
 
-        <main class="content screen-view screen-view--secondary" id="route-search-screen" data-screen="route-search" hidden>
-          <div class="screen-topbar"><button class="back-btn" data-go="home" aria-label="Kembali">‹</button><span>Cari rute</span><span></span></div>
-          <h1 class="screen-title">Mau ke mana?</h1><p class="screen-copy">Pilih rute berdasarkan waktu, transfer, dan kepadatan.</p>
-          <form class="route-form" id="route-form"><label>Dari<input id="origin-input" value="Tembalang" /></label><label>Ke<input id="destination-input" value="Kota Lama" /></label><label class="switch-row">Berangkat sekarang <input type="checkbox" checked /></label><button class="btn btn--primary btn--full" type="submit">Lihat pilihan rute</button></form>
-          <div class="saved-places"><p class="eyebrow">Pencarian cepat</p><button class="place-chip">⌖ Halte Simpang Lima</button><button class="place-chip">⌖ Rumah</button></div>
-        </main>
-
-        <main class="content screen-view screen-view--secondary" id="route-results-screen" data-screen="route-results" hidden>
-          <div class="screen-topbar"><button class="back-btn" data-go="route-search" aria-label="Kembali">‹</button><span>Pilihan rute</span><button class="icon-btn icon-btn--small" aria-label="Ubah pencarian">✎</button></div>
-          <div class="route-summary"><p class="eyebrow">Tembalang → Kota Lama</p><h1 class="screen-title">3 pilihan untukmu</h1><p class="muted">Berangkat sekarang · data simulasi</p></div>
-          <div class="route-results"><button class="route-option" data-go="trip"><span class="route-option__label">Paling cepat</span><strong>32 menit</strong><span>1 transfer · <b class="crowd-text--med">Sedang</b></span><small>Koridor 2 → Koridor 1</small><svg class="icon"><use href="#i-chevron" /></svg></button><button class="route-option" data-go="trip"><span class="route-option__label">Paling nyaman</span><strong>39 menit</strong><span>0 transfer · <b class="crowd-text--low">Sepi</b></span><small>Koridor 1 langsung</small><svg class="icon"><use href="#i-chevron" /></svg></button><button class="route-option" data-go="trip"><span class="route-option__label">Alternatif</span><strong>35 menit</strong><span>1 transfer · <b class="crowd-text--high">Padat</b></span><small>Feeder → Koridor 1</small><svg class="icon"><use href="#i-chevron" /></svg></button></div>
-        </main>
-
         <main class="content screen-view screen-view--secondary" id="trip-screen" data-screen="trip" hidden>
-          <div class="screen-topbar"><button class="back-btn" data-go="route-results" aria-label="Kembali">‹</button><span>Trip aktif</span><button class="icon-btn icon-btn--small" aria-label="Notifikasi trip">Info</button></div>
+          <div class="screen-topbar"><button class="back-btn" data-go="home" aria-label="Kembali">‹</button><span>Trip aktif</span><button class="icon-btn icon-btn--small" aria-label="Notifikasi trip">Info</button></div>
           <section class="trip-hero"><p class="eyebrow">Menuju</p><h1 class="screen-title">Kota Lama</h1><div class="trip-progress"><span style="width: 42%"></span></div><div class="trip-progress-meta"><span>2 dari 5 halte</span><strong id="trip-countdown">Turun 2 halte lagi</strong></div></section>
           <section class="card trip-now"><div class="trip-now__badge">Sekarang</div><p class="eyebrow">Halte saat ini</p><h2>Simpang Lima</h2><p class="muted">TS-101 · Koridor 1 · Sepi</p></section>
           <div class="trip-next"><span class="trip-next__icon"><svg class="icon"><use href="#i-location" /></svg></span><div><p class="eyebrow">Berikutnya</p><h2>Pahlawan</h2><p class="muted">2–4 menit lagi</p></div></div>
@@ -320,23 +373,23 @@
 
         <!-- Bottom navigation -->
         <nav class="bottom-nav" aria-label="Navigasi utama">
-          <button class="nav-item is-active" type="button" aria-current="page" data-go="home">
+          <button class="nav-item is-active" type="button" aria-current="page" data-tab="home">
             <svg class="icon" aria-hidden="true"><use href="#i-home" /></svg>
             <span>Beranda</span>
           </button>
-          <button class="nav-item" type="button" data-go="route-search">
+          <button class="nav-item" type="button" data-tab="route">
             <svg class="icon" aria-hidden="true"><use href="#i-route" /></svg>
             <span>Rute</span>
           </button>
-          <button class="nav-item" type="button" data-go="trip">
+          <button class="nav-item" type="button" data-tab="trip">
             <svg class="icon" aria-hidden="true"><use href="#i-trip" /></svg>
             <span>Trip</span>
           </button>
-          <button class="nav-item" type="button" data-go="explore">
+          <button class="nav-item" type="button" data-tab="explore">
             <svg class="icon" aria-hidden="true"><use href="#i-compass" /></svg>
             <span>Jelajah</span>
           </button>
-          <button class="nav-item" type="button" data-go="profile">
+          <button class="nav-item" type="button" data-tab="profile">
             <svg class="icon" aria-hidden="true"><use href="#i-user" /></svg>
             <span>Profil</span>
           </button>

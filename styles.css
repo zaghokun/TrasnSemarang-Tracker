@@ -982,6 +982,7 @@ h1, h2, h3, p {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   padding: 0 var(--space-2);
+  z-index: 20; /* selalu di atas panel Rute agar tetap terlihat & bisa diklik */
 }
 
 .nav-item {
@@ -1084,6 +1085,393 @@ h1, h2, h3, p {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* ==========================================================================
+   Tab RUTE — map full + panel Ringkas/Daftar
+   ========================================================================== */
+
+/* Token tinggi panel (dipakai juga untuk posisi kontrol peta) */
+:root {
+  --panel-visible-collapsed: 212px;                      /* tinggi panel yang terlihat di atas nav */
+  --nav-zone: calc(var(--nav-height) + var(--nav-float-gap)); /* area yang ditutup nav */
+  --panel-height-collapsed: calc(var(--panel-visible-collapsed) + var(--nav-zone));
+  --panel-height-expanded: 62%;
+}
+
+.route-screen {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ---- Kanvas peta: mengisi ruang di atas panel ---- */
+.route-canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background:
+    linear-gradient(0deg, rgba(44, 70, 150, 0.03), rgba(44, 70, 150, 0.03)),
+    #eef0f6;
+  overflow: hidden;
+}
+
+.route-top-controls {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  right: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+  z-index: 6;
+}
+
+.route-search-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.search-bar--floating {
+  flex: 1;
+  margin-top: 0;
+}
+
+.freshness--floating {
+  margin-top: 0;
+  width: fit-content;
+  max-width: 100%;
+  justify-self: start;
+  box-shadow: var(--shadow-card);
+}
+
+/* Layar pendek: panel terbuka sedikit lebih rendah agar peta tetap terbaca */
+@media (max-height: 700px) {
+  :root { --panel-height-expanded: 56%; }
+}
+
+/* Saat panel dibuka penuh, ruang peta kecil: sembunyikan chip koridor agar
+   kontrol atas dan kontrol sisi tidak saling menimpa */
+.route-screen:has(.route-panel.is-expanded) .map-filter-row {
+  display: none;
+}
+
+.route-side-controls {
+  position: absolute;
+  right: var(--space-3);
+  /* Kanvas peta sudah berakhir di tepi atas panel, jadi cukup jarak kecil dari bawah kanvas */
+  bottom: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+  z-index: 6;
+}
+
+.map-control-btn {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.route-legend-pop {
+  position: absolute;
+  right: var(--space-3);
+  bottom: calc(var(--space-3) + 96px + var(--space-2));
+  z-index: 7;
+  display: grid;
+  gap: var(--space-2);
+  background: var(--color-surface);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  margin: 0;
+  color: var(--color-text);
+}
+
+.route-toast {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: var(--space-3);
+  z-index: 6;
+  /* jangan menabrak tombol recenter/legenda di sisi kanan */
+  max-width: calc(100% - 136px);
+  text-align: center;
+}
+
+/* Banner mode pelacakan trip di atas peta */
+.trip-tracking-banner {
+  position: absolute;
+  top: calc(var(--space-3) + 162px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  min-height: 40px;
+  border-radius: var(--radius-pill);
+  background: var(--color-brand);
+  color: #fff;
+  font-size: var(--text-label);
+  font-weight: 800;
+  box-shadow: var(--shadow-float);
+  white-space: nowrap;
+}
+
+.trip-tracking-banner .icon { width: var(--icon-sm); height: var(--icon-sm); }
+
+.explore-other-btn {
+  position: absolute;
+  bottom: calc(var(--space-3) + 46px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  min-height: 36px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-brand);
+  font-size: var(--text-meta);
+  font-weight: 800;
+  box-shadow: var(--shadow-card);
+  white-space: nowrap;
+}
+
+/* Garis koridor: dibedakan pola/ketebalan, bukan hanya warna */
+.route-line--dark path {
+  stroke: #22305e;
+  stroke-width: 5;
+  stroke-dasharray: 1 10;
+  stroke-linecap: round;
+}
+
+/* Marker stop/bus di-render ulang oleh script — posisi dasar dipakai ulang */
+#route-stop-layer,
+#route-bus-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
+#route-bus-layer { z-index: 4; }
+
+.live-bus__id {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  background: var(--color-brand-deep, #101c3d);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 5px;
+  border-radius: var(--radius-pill);
+  line-height: 1;
+}
+
+.live-bus.is-stale { opacity: 0.55; }
+
+.map-stop--four { top: 84%; left: 90%; }
+.live-bus--four { top: 58%; left: 12%; }
+
+/* ---- Panel bawah ---- */
+.route-panel {
+  position: relative;
+  flex: none;
+  height: var(--panel-height-collapsed);
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: 0 -10px 30px rgba(16, 28, 61, 0.14);
+  transition: height var(--dur-med) var(--ease-standard);
+  z-index: 5;
+}
+
+.route-panel.is-expanded {
+  height: var(--panel-height-expanded);
+}
+
+.panel-handle {
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.panel-handle i {
+  width: 40px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-border);
+}
+
+.panel-handle span {
+  font-size: var(--text-meta);
+  font-weight: 800;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.panel-tabs {
+  display: flex;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-2);
+}
+
+.panel-tab {
+  flex: 1;
+  min-height: 38px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-soft);
+  font-size: var(--text-label);
+  font-weight: 800;
+  color: var(--color-text-muted);
+  transition: background var(--dur-fast) var(--ease-standard);
+}
+
+.panel-tab.is-active {
+  background: var(--color-brand);
+  color: #fff;
+}
+
+/* SATU area scroll di tab Rute: hanya body panel */
+.panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-2) var(--space-4) var(--content-bottom-clearance);
+  scrollbar-width: none;
+}
+
+.panel-body::-webkit-scrollbar { display: none; }
+
+.panel-section { display: grid; gap: var(--space-2); }
+.panel-section + .panel-section { margin-top: var(--space-4); }
+
+/* Baris koridor */
+.panel-corridor-row,
+.panel-stop-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  text-align: left;
+  width: 100%;
+}
+
+.panel-corridor-row__info,
+.panel-stop-row__info {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+}
+
+.panel-corridor-row strong,
+.panel-stop-row strong { font-size: var(--text-body); }
+
+.panel-corridor-row small,
+.panel-stop-row small { color: var(--color-text-muted); font-size: var(--text-meta); }
+
+.panel-row-chev { color: var(--color-text-muted); }
+
+/* Identitas koridor: pola garis + tidak tergantung warna saja */
+.corridor-line {
+  width: 34px;
+  height: 6px;
+  border-radius: 4px;
+  flex: none;
+}
+
+.corridor-line--corridor-1 { background: var(--color-brand); height: 7px; }
+.corridor-line--corridor-2 { background: repeating-linear-gradient(90deg, #22305e 0 8px, transparent 8px 13px); }
+.corridor-line--feeder { background: repeating-linear-gradient(90deg, #6b7392 0 3px, transparent 3px 7px); height: 4px; }
+
+.stop-card__pin--sm {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+}
+
+.panel-search-label {
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--text-label);
+  font-weight: 800;
+  color: var(--color-text-muted);
+}
+
+.panel-search-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 var(--space-4);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 700;
+}
+
+.route-option--panel {
+  margin-top: var(--space-2);
+}
+
+.route-option--panel .icon { display: none; }
+
+.route-option--panel.is-selected {
+  outline: 2px solid var(--color-brand);
+}
+
+/* Detail rute di panel */
+.panel-route-detail { gap: var(--space-3); }
+.route-legs { display: grid; gap: var(--space-2); font-size: var(--text-label); color: var(--color-text); }
+.route-leg { display: flex; align-items: center; gap: var(--space-2); }
+.route-leg__line { width: 30px; flex: none; border-radius: 4px; }
+.route-leg__line--walk { border-top: 3px dotted var(--color-text-muted); }
+.route-leg__line--bus { height: 6px; background: var(--color-brand); }
+.route-stop-picker { display: grid; gap: var(--space-2); }
+.route-stop-picker label { display: grid; gap: 6px; font-size: var(--text-label); font-weight: 800; color: var(--color-text-muted); }
+.route-stop-picker select { min-height: 44px; padding: 0 var(--space-3); border: 1.5px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); font: inherit; font-weight: 700; }
+
+/* Peta: rute terpilih disorot, lainnya diredupkan */
+.route-canvas.has-selected-route .route-line { opacity: 0.18; }
+.route-canvas.has-selected-route .route-line--blue { opacity: 1; }
+.route-canvas.has-selected-route .route-line--blue path { stroke-width: 9; }
+
+/* Trip kosong & aksi */
+.trip-empty { display: grid; justify-items: center; text-align: center; gap: var(--space-3); margin-top: 96px; padding: var(--space-6); }
+.trip-empty__icon { width: 72px; height: 72px; display: inline-flex; align-items: center; justify-content: center; border-radius: 24px; background: var(--color-sky); color: var(--color-brand); }
+.trip-empty__icon .icon { width: 34px; height: 34px; }
+.trip-empty .btn--full { margin-top: var(--space-2); }
+.trip-actions { display: grid; gap: var(--space-2); margin-top: var(--space-4); }
+.trip-actions .btn--full { margin-top: 0; }
+
+/* Penanda trip aktif di bottom nav */
+.nav-item.has-active-trip::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 50%;
+  transform: translateX(14px);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-status-live);
+}
+
+/* Legend warna garis Koridor 2 (gelap, bukan coral) */
+.legend-line--dark { background: #22305e; }
 
 /* ==========================================================================
    Primary screens — tahap 3 dan seterusnya
