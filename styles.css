@@ -87,15 +87,9 @@
   /* ---- Touch target ---- */
   --tap-min: 44px;
 
-  /* ---- Bottom navigation geometry ----
-     padding konten = tinggi nav + jarak melayang (bottom) + margin aman.
-     Satu-satunya tempat mengatur clearance bawah untuk SEMUA layar. */
-  --nav-height: 72px;
-  --nav-float-gap: 16px;      /* bottom: nav dari tepi bawah layar */
-  --nav-safe-margin: 20px;    /* napas ekstra di atas nav saat di-scroll */
-  --content-bottom-clearance: calc(
-    var(--nav-height) + var(--nav-float-gap) + var(--nav-safe-margin)
-  );
+  /* ---- Clearance bawah konten (tanpa bottom nav) ----
+     Napas aman di dasar layar untuk SEMUA layar scroll. */
+  --content-bottom-clearance: var(--space-6);
 
   /* ---- Phone frame ---- */
   --phone-width: 390px;
@@ -103,8 +97,10 @@
   --phone-frame: 10px;        /* ketebalan bezel frame */
   --stage-padding: 24px;
 
-  /* ---- Bottom sheet Beranda ---- */
-  --home-sheet-height: 62%;   /* tinggi maksimum sheet peta Beranda */
+  /* ---- Bottom sheet Beranda (3 tinggi: peta penuh, ringkas, daftar) ---- */
+  --home-sheet-full: 132px;   /* grip + header aksi (chip halte/bus); peta nyaris penuh */
+  --home-sheet-height: 62%;   /* tinggi ringkas default */
+  --home-sheet-expanded: 92%; /* daftar diperluas */
 }
 
 /* ==========================================================================
@@ -679,6 +675,33 @@ h1, h2, h3, p {
   flex: none;
 }
 
+/* Halte terpilih (recenter dari tombol "Halte terdekat") — sorot dengan isian */
+.map-stop-pin.is-selected {
+  background: var(--color-brand);
+  border-color: var(--color-brand);
+  color: #ffffff;
+  box-shadow: 0 0 0 6px rgba(217, 34, 59, 0.2), 0 4px 12px rgba(16, 28, 61, 0.24);
+  z-index: 600;
+}
+
+.map-stop-pin.is-selected .map-stop-pin__icon {
+  color: #ffffff;
+}
+
+/* Denyut singkat saat kamera dipusatkan ke halte terdekat */
+.map-stop-pin.is-pinged {
+  animation: stop-ping 600ms var(--ease-standard) 2;
+}
+
+@keyframes stop-ping {
+  0% { box-shadow: 0 0 0 0 rgba(217, 34, 59, 0.42), 0 4px 12px rgba(16, 28, 61, 0.24); }
+  100% { box-shadow: 0 0 0 14px rgba(217, 34, 59, 0), 0 4px 12px rgba(16, 28, 61, 0.24); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-stop-pin.is-pinged { animation: none; }
+}
+
 /* Ikon lokasi pengguna kustom (Leaflet divIcon) */
 .map-user-dot {
   width: 20px;
@@ -713,8 +736,22 @@ h1, h2, h3, p {
   z-index: 600;
 }
 
+/* Denyut singkat saat kamera dipusatkan ke bus terdekat */
+.map-bus-dot.is-pinged {
+  animation: bus-ping 600ms var(--ease-standard) 2;
+}
+
+@keyframes bus-ping {
+  0% { box-shadow: 0 0 0 0 rgba(217, 34, 59, 0.42), 0 5px 14px rgba(16, 28, 61, 0.28); }
+  100% { box-shadow: 0 0 0 14px rgba(217, 34, 59, 0), 0 5px 14px rgba(16, 28, 61, 0.28); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-bus-dot.is-pinged { animation: none; }
+}
+
 /* ==========================================================================
-   Bottom sheet
+   Bottom sheet (dapat digeser: peta penuh ↔ ringkas ↔ daftar)
    ========================================================================== */
 
 .home-sheet {
@@ -723,20 +760,78 @@ h1, h2, h3, p {
   right: 0;
   bottom: 0;
   z-index: 5;
-  max-height: 62%;
+  height: var(--home-sheet-height);
   display: flex;
   flex-direction: column;
-  pointer-events: none; /* hanya isi sheet yang menangkap klik */
+  pointer-events: none; /* hanya grip + isi sheet yang menangkap klik */
+  /* Satu permukaan putih yang menyatu: radius + bayangan di container,
+     grip & body transparan agar tidak ada sambungan/notch ganda. */
+  background: #ffffff;
+  border-top-left-radius: var(--radius-xl);
+  border-top-right-radius: var(--radius-xl);
+  box-shadow: 0 -10px 30px rgba(16, 28, 61, 0.1);
+  overflow: hidden;
+  transition: height var(--dur-med) var(--ease-standard);
+  will-change: height;
+}
+
+/* Tanpa transisi ketinggian selama drag agar mengikuti jari */
+.home-sheet.is-dragging { transition: none; }
+
+/* State: peta penuh (sheet dikecilkan) */
+.home-sheet[data-sheet-state="full"] { height: var(--home-sheet-full); }
+/* State: daftar diperluas */
+.home-sheet[data-sheet-state="expanded"] { height: var(--home-sheet-expanded); }
+
+@media (prefers-reduced-motion: reduce) {
+  .home-sheet { transition: none; }
+}
+
+/* Grip di tepi atas sheet — area sentuh untuk menggeser (bukan bar terpisah) */
+.home-sheet__grip {
+  pointer-events: auto;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  cursor: grab;
+  touch-action: none;
+  background: transparent;
+}
+
+.home-sheet__grip:active { cursor: grabbing; }
+
+.home-sheet__grip i {
+  width: 42px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-border);
+}
+
+.home-sheet__grip:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: -2px;
 }
 
 /* ==========================================================================
-   Kontrol sisi peta Beranda (halte terdekat + pusatkan lokasi)
+   Kontrol sisi peta Beranda (recenter) — menempel di tepi atas sheet.
+   --home-sheet-px diperbarui terus oleh ResizeObserver (script.js) sehingga
+   tombol tetap sejajar walau sheet sedang dianimasikan/digeser.
    ========================================================================== */
+
+.home-map {
+  --home-sheet-px: 511px; /* tinggi sheet saat ini (fallback) */
+}
 
 .home-map__controls {
   position: absolute;
   right: var(--space-4);
-  bottom: calc(var(--home-sheet-height) + var(--space-4));
+  bottom: calc(var(--home-sheet-px) + var(--space-4));
   display: grid;
   gap: var(--space-2);
   z-index: 6;
@@ -753,18 +848,15 @@ h1, h2, h3, p {
   color: #fff;
 }
 
-/* Isi sheet — area scroll, panel putih terpisah (bubble) */
+/* Isi sheet — area scroll (permukaan putih dimiliki oleh .home-sheet) */
 .home-sheet__body {
   pointer-events: auto;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: none;
-  background: #ffffff;
-  border-top-left-radius: var(--radius-xl);
-  border-top-right-radius: var(--radius-xl);
-  padding: var(--space-5) var(--space-4) var(--content-bottom-clearance);
-  box-shadow: 0 -10px 30px rgba(16, 28, 61, 0.1);
+  background: transparent;
+  padding: 0 var(--space-4) var(--content-bottom-clearance);
 }
 
 .home-sheet__body::-webkit-scrollbar { display: none; }
@@ -776,6 +868,7 @@ h1, h2, h3, p {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--space-3);
+  padding-top: var(--space-2);
   padding-bottom: var(--space-3);
 }
 
@@ -959,6 +1052,20 @@ h1, h2, h3, p {
 .info-detail__row strong { font-size: var(--text-body); }
 .info-detail__row small { font-size: var(--text-meta); color: var(--color-text-muted); }
 .info-detail__row .info-detail__spacer { flex: 1; }
+
+/* Nilai ringkas di kanan baris status (mis. kapasitas / naik-turun) */
+.info-detail__value {
+  flex: none;
+  font-size: var(--text-label);
+  font-weight: 800;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.info-detail__value--soft {
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
 
 /* ---- Penumpang hidup (sensor naik/turun) di kartu bus ---- */
 .bus-row__capacity {
@@ -1417,27 +1524,32 @@ h1, h2, h3, p {
 .map-live-header { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-3); margin: var(--space-5) 0 var(--space-4); }
 .live-pill { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: var(--radius-pill); background: var(--color-mint); color: var(--color-text); font-size: var(--text-meta); font-weight: 800; }
 .live-pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--color-status-live); }
-.map-filter-row { display: flex; gap: var(--space-2); overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
-.map-filter-row::-webkit-scrollbar { display: none; }
+.map-filter-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .map-filter { min-height: 38px; padding: 0 var(--space-4); border-radius: var(--radius-pill); background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text-muted); font-size: var(--text-label); font-weight: 800; white-space: nowrap; }
 .map-filter.is-active { background: var(--color-brand); color: #fff; border-color: var(--color-brand); }
-.live-map { position: relative; height: 330px; margin-top: var(--space-4); overflow: hidden; border-radius: var(--radius-lg); background: #e9ecf4; box-shadow: var(--shadow-card); }
-.map-grid-lines { position: absolute; inset: 0; opacity: .5; background-image: linear-gradient(90deg, rgba(217,34,59,.07) 1px, transparent 1px), linear-gradient(rgba(217,34,59,.07) 1px, transparent 1px); background-size: 32px 32px; }
-.map-road--live-1 { width: 150%; height: 18px; top: 105px; left: -25%; transform: rotate(-14deg); }
-.map-road--live-2 { width: 150%; height: 12px; top: 235px; left: -20%; transform: rotate(9deg); }
-.map-road--live-3 { width: 15px; height: 140%; top: -20%; left: 58%; transform: rotate(8deg); }
-.route-line { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
-.route-line path { fill: none; stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
-.route-line--blue path { stroke: var(--color-brand); }.route-line--coral path { stroke: var(--color-status-high); }
-.map-stop { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--color-text); font-size: 10px; font-weight: 800; transform: translate(-50%, -50%); z-index: 3; }
-.map-stop span { width: 16px; height: 16px; border: 4px solid var(--color-brand); border-radius: 50%; background: #fff; }
-.map-stop b { padding: 3px 5px; border-radius: 5px; background: rgba(255,255,255,.88); white-space: nowrap; }
-.map-stop--one { top: 66%; left: 18%; }.map-stop--two { top: 44%; left: 51%; }.map-stop--three { top: 17%; left: 86%; }
-.live-bus { position: absolute; z-index: 4; width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--color-brand); color: #fff; box-shadow: 0 5px 14px rgba(16,28,61,.28); transition: transform var(--dur-med) var(--ease-standard), box-shadow var(--dur-med) var(--ease-standard); }
-.live-bus:hover, .live-bus.is-selected { transform: scale(1.16); box-shadow: 0 0 0 6px rgba(217,34,59,.18), 0 5px 14px rgba(16,28,61,.28); }
-.live-bus .icon { width: 20px; height: 20px; }.live-bus--one { top: 52%; left: 29%; }.live-bus--two { top: 73%; left: 70%; background: var(--color-status-high); }.live-bus--three { top: 26%; left: 67%; background: var(--color-status-med); }
-.user-location { position: absolute; z-index: 3; top: 52%; left: 48%; width: 22px; height: 22px; border-radius: 50%; background: var(--color-brand); box-shadow: 0 0 0 8px rgba(217,34,59,.2); }.user-location i { position: absolute; inset: 7px; border-radius: 50%; background: #fff; }
-.map-toast { position: absolute; left: 50%; bottom: var(--space-3); z-index: 5; transform: translateX(-50%); width: max-content; max-width: calc(100% - 24px); padding: 8px 12px; border-radius: var(--radius-pill); background: rgba(16,28,61,.9); color: #fff; font-size: var(--text-meta); font-weight: 700; }
+
+/* Toast aksi Beranda — hanya tampil sesaat, tidak menutup area bus */
+.home-toast {
+  bottom: auto;
+  top: calc(var(--space-3) + 8px);
+  z-index: 8;
+  max-width: calc(100% - 112px); /* tetap bebas dari kontrol zoom Leaflet */
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -6px);
+  transition: opacity var(--dur-med) var(--ease-standard),
+    transform var(--dur-med) var(--ease-standard);
+}
+
+.home-toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-toast { transition: opacity var(--dur-fast) var(--ease-standard); }
+}
 .map-live-legend { display: flex; flex-wrap: wrap; gap: var(--space-3); margin: var(--space-3) 0 var(--space-5); color: var(--color-text-muted); font-size: var(--text-meta); font-weight: 700; }.map-live-legend span { display: inline-flex; align-items: center; gap: 6px; }.legend-line { width: 18px; height: 4px; border-radius: 4px; }.legend-line--blue { background: var(--color-brand); }.legend-line--coral { background: var(--color-status-high); }
 .map-bus-sheet { padding-top: var(--space-4); border-top: 1px solid var(--color-border); }.map-bus-list { display: grid; gap: var(--space-2); margin-top: var(--space-3); }.map-bus-row { width: 100%; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-radius: var(--radius-md); background: var(--color-surface); box-shadow: var(--shadow-card); }.map-bus-row__info { flex: 1; display: grid; gap: 2px; }.map-bus-row strong { font-size: var(--text-body); }.map-bus-row small { color: var(--color-text-muted); font-size: var(--text-meta); }
 
@@ -1467,56 +1579,6 @@ h1, h2, h3, p {
   font-size: var(--text-meta);
   line-height: 1.6;
   color: var(--color-text-muted);
-}
-
-.bottom-nav {
-  position: absolute;
-  left: var(--nav-float-gap);
-  right: var(--nav-float-gap);
-  bottom: var(--nav-float-gap);
-  height: var(--nav-height);
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-nav);
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  padding: 0 var(--space-2);
-  z-index: 20; /* selalu di atas panel Rute agar tetap terlihat & bisa diklik */
-}
-
-.nav-item {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  min-width: var(--tap-min);
-  font-size: 10.5px;
-  font-weight: 700;
-  color: var(--color-text-muted);
-  border-radius: var(--radius-md);
-  transition: color var(--dur-fast) var(--ease-standard);
-}
-
-.nav-item .icon {
-  width: var(--icon-md);
-  height: var(--icon-md);
-}
-
-.nav-item.is-active {
-  color: var(--color-brand);
-  font-weight: 800;
-}
-
-.nav-item.is-active::after {
-  content: "";
-  position: absolute;
-  bottom: 6px;
-  width: 16px;
-  height: 3px;
-  border-radius: var(--radius-pill);
-  background: var(--color-brand);
 }
 
 /* ==========================================================================
@@ -1586,116 +1648,12 @@ h1, h2, h3, p {
 }
 
 /* ==========================================================================
-   Tab RUTE — map full + panel Ringkas/Daftar
+   Kontrol & banner di atas peta Beranda
    ========================================================================== */
-
-/* Token tinggi panel (dipakai juga untuk posisi kontrol peta) */
-:root {
-  --panel-visible-collapsed: 212px;                      /* tinggi panel yang terlihat di atas nav */
-  --nav-zone: calc(var(--nav-height) + var(--nav-float-gap)); /* area yang ditutup nav */
-  --panel-height-collapsed: calc(var(--panel-visible-collapsed) + var(--nav-zone));
-  --panel-height-expanded: 62%;
-}
-
-.route-screen {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* ---- Kanvas peta: mengisi ruang di atas panel ---- */
-.route-canvas {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  background:
-    linear-gradient(0deg, rgba(217, 34, 59, 0.03), rgba(217, 34, 59, 0.03)),
-    #eef0f6;
-  overflow: hidden;
-}
-
-.route-top-controls {
-  position: absolute;
-  top: var(--space-3);
-  left: var(--space-3);
-  right: var(--space-3);
-  display: grid;
-  gap: var(--space-2);
-  z-index: 6;
-}
-
-.route-search-row {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-}
-
-.search-bar--floating {
-  flex: 1;
-  margin-top: 0;
-}
-
-.freshness--floating {
-  margin-top: 0;
-  width: fit-content;
-  max-width: 100%;
-  justify-self: start;
-  box-shadow: var(--shadow-card);
-}
-
-/* Layar pendek: panel terbuka sedikit lebih rendah agar peta tetap terbaca */
-@media (max-height: 700px) {
-  :root { --panel-height-expanded: 56%; }
-}
-
-/* Saat panel dibuka penuh, ruang peta kecil: sembunyikan chip koridor agar
-   kontrol atas dan kontrol sisi tidak saling menimpa */
-.route-screen:has(.route-panel.is-expanded) .map-filter-row {
-  display: none;
-}
-
-.route-side-controls {
-  position: absolute;
-  right: var(--space-3);
-  /* Kanvas peta sudah berakhir di tepi atas panel, jadi cukup jarak kecil dari bawah kanvas */
-  bottom: var(--space-3);
-  display: grid;
-  gap: var(--space-2);
-  z-index: 6;
-}
 
 .map-control-btn {
   background: var(--color-surface);
   box-shadow: var(--shadow-card);
-}
-
-.route-legend-pop {
-  position: absolute;
-  right: var(--space-3);
-  bottom: calc(var(--space-3) + 96px + var(--space-2));
-  z-index: 7;
-  display: grid;
-  gap: var(--space-2);
-  background: var(--color-surface);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  margin: 0;
-  color: var(--color-text);
-}
-
-.route-toast {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: var(--space-3);
-  z-index: 6;
-  /* jangan menabrak tombol recenter/legenda di sisi kanan */
-  max-width: calc(100% - 136px);
-  text-align: center;
 }
 
 /* Banner mode pelacakan trip di atas peta */
@@ -1721,136 +1679,9 @@ h1, h2, h3, p {
 
 .trip-tracking-banner .icon { width: var(--icon-sm); height: var(--icon-sm); }
 
-.explore-other-btn {
-  position: absolute;
-  bottom: calc(var(--space-3) + 46px);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 6;
-  min-height: 36px;
-  padding: 0 var(--space-4);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface);
-  color: var(--color-brand);
-  font-size: var(--text-meta);
-  font-weight: 800;
-  box-shadow: var(--shadow-card);
-  white-space: nowrap;
-}
-
-/* Garis koridor: dibedakan pola/ketebalan, bukan hanya warna */
-.route-line--dark path {
-  stroke: #22305e;
-  stroke-width: 5;
-  stroke-dasharray: 1 10;
-  stroke-linecap: round;
-}
-
-/* Marker stop/bus di-render ulang oleh script — posisi dasar dipakai ulang */
-#route-stop-layer,
-#route-bus-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-}
-
-#route-bus-layer { z-index: 4; }
-
-.live-bus__id {
-  position: absolute;
-  top: -6px;
-  right: -8px;
-  background: var(--color-brand-deep, #101c3d);
-  color: #fff;
-  font-size: 9px;
-  font-weight: 800;
-  padding: 2px 5px;
-  border-radius: var(--radius-pill);
-  line-height: 1;
-}
-
-.live-bus.is-stale { opacity: 0.55; }
-
-.map-stop--four { top: 84%; left: 90%; }
-.live-bus--four { top: 58%; left: 12%; }
+/* ---- Panel bawah sheet Cari Rute ---- */
 
 /* ---- Panel bawah ---- */
-.route-panel {
-  position: relative;
-  flex: none;
-  height: var(--panel-height-collapsed);
-  display: flex;
-  flex-direction: column;
-  background: var(--color-surface);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  box-shadow: 0 -10px 30px rgba(16, 28, 61, 0.14);
-  transition: height var(--dur-med) var(--ease-standard);
-  z-index: 5;
-}
-
-.route-panel.is-expanded {
-  height: var(--panel-height-expanded);
-}
-
-.panel-handle {
-  min-height: 44px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-}
-
-.panel-handle i {
-  width: 40px;
-  height: 4px;
-  border-radius: var(--radius-pill);
-  background: var(--color-border);
-}
-
-.panel-handle span {
-  font-size: var(--text-meta);
-  font-weight: 800;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.panel-tabs {
-  display: flex;
-  gap: var(--space-2);
-  padding: 0 var(--space-4) var(--space-2);
-}
-
-.panel-tab {
-  flex: 1;
-  min-height: 38px;
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-soft);
-  font-size: var(--text-label);
-  font-weight: 800;
-  color: var(--color-text-muted);
-  transition: background var(--dur-fast) var(--ease-standard);
-}
-
-.panel-tab.is-active {
-  background: var(--color-brand);
-  color: #fff;
-}
-
-/* SATU area scroll di tab Rute: hanya body panel */
-.panel-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: var(--space-2) var(--space-4) var(--content-bottom-clearance);
-  scrollbar-width: none;
-}
-
-.panel-body::-webkit-scrollbar { display: none; }
-
 .panel-section { display: grid; gap: var(--space-2); }
 .panel-section + .panel-section { margin-top: var(--space-4); }
 
@@ -1943,11 +1774,6 @@ h1, h2, h3, p {
 .route-stop-picker label { display: grid; gap: 6px; font-size: var(--text-label); font-weight: 800; color: var(--color-text-muted); }
 .route-stop-picker select { min-height: 44px; padding: 0 var(--space-3); border: 1.5px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); font: inherit; font-weight: 700; }
 
-/* Peta: rute terpilih disorot, lainnya diredupkan */
-.route-canvas.has-selected-route .route-line { opacity: 0.18; }
-.route-canvas.has-selected-route .route-line--blue { opacity: 1; }
-.route-canvas.has-selected-route .route-line--blue path { stroke-width: 9; }
-
 /* Trip kosong & aksi */
 .trip-empty { display: grid; justify-items: center; text-align: center; gap: var(--space-3); margin-top: 96px; padding: var(--space-6); }
 .trip-empty__icon { width: 72px; height: 72px; display: inline-flex; align-items: center; justify-content: center; border-radius: 24px; background: var(--color-sky); color: var(--color-brand); }
@@ -1955,19 +1781,6 @@ h1, h2, h3, p {
 .trip-empty .btn--full { margin-top: var(--space-2); }
 .trip-actions { display: grid; gap: var(--space-2); margin-top: var(--space-4); }
 .trip-actions .btn--full { margin-top: 0; }
-
-/* Penanda trip aktif di bottom nav */
-.nav-item.has-active-trip::before {
-  content: "";
-  position: absolute;
-  top: 8px;
-  right: 50%;
-  transform: translateX(14px);
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--color-status-live);
-}
 
 /* Legend warna garis Koridor 2 (gelap, bukan coral) */
 .legend-line--dark { background: #22305e; }
@@ -2007,10 +1820,10 @@ h1, h2, h3, p {
 .onboarding-points strong { color: var(--color-brand); font-size: var(--text-label); }
 
 /* detail screens */
-.detail-hero, .bus-detail-hero { margin-top: var(--space-5); padding: var(--space-5); border-radius: var(--radius-lg); }
+.detail-hero { margin-top: var(--space-5); padding: var(--space-5); border-radius: var(--radius-lg); }
 .detail-hero--sky { background: var(--color-sky); }
 .detail-icon { width: 52px; height: 52px; margin-bottom: var(--space-4); display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-brand); }
-.detail-hero .screen-title, .bus-detail-hero .screen-title { margin-top: var(--space-1); }
+.detail-hero .screen-title { margin-top: var(--space-1); }
 .info-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); padding: var(--space-4) 0; border-bottom: 1px solid var(--color-border); }
 .info-row span { display: grid; gap: 2px; }
 .info-row strong { font-size: var(--text-card); }
@@ -2021,10 +1834,6 @@ h1, h2, h3, p {
 .detail-bus-row > div { display: grid; gap: 2px; }
 .detail-bus-row strong { font-size: var(--text-body); }
 .detail-bus-row small { font-size: var(--text-meta); color: var(--color-text-muted); }
-.bus-detail-hero { background: var(--color-brand); color: #fff; }
-.bus-detail-hero .eyebrow, .bus-detail-hero .muted { color: rgba(255,255,255,.82); }
-.bus-detail-hero .bus-card__badge { margin-bottom: var(--space-4); background: #fff; color: var(--color-brand); }
-.bus-detail-hero .crowd-badge { margin-top: var(--space-4); }
 .freshness--inline { margin: var(--space-4) 0; }
 .progress-card strong { color: var(--color-brand); font-size: var(--text-body); }
 .route-progress { position: relative; display: flex; justify-content: space-between; gap: var(--space-2); margin-top: var(--space-6); padding-top: 16px; }
@@ -2055,6 +1864,106 @@ h1, h2, h3, p {
 /* explore/profile/accessibility */
 .explore-hero { margin-top: var(--space-5); padding: var(--space-5); border-radius: var(--radius-lg); background: var(--color-brand); color: #fff; overflow: hidden; }.explore-hero .eyebrow { color: rgba(255,255,255,.8); }.explore-hero .screen-title { margin-top: var(--space-2); }.explore-hero p:last-child { margin-top: var(--space-3); color: rgba(255,255,255,.85); font-size: var(--text-body); }.explore-heading { margin-top: var(--space-6); }.destination-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-top: var(--space-3); }.destination-card { min-height: 150px; padding: var(--space-4); border-radius: var(--radius-lg); display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; color: var(--color-text); }.destination-card--coral { background: var(--color-coral); }.destination-card--blue { background: var(--color-sky); }.destination-card--mint { background: var(--color-mint); }.destination-art { font-size: 28px; color: var(--color-brand); }.destination-card strong { font-size: var(--text-card); line-height: 1.1; text-align: left; }.destination-card small { font-size: 11px; color: var(--color-text-muted); }.language-card { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-4); }.toggle { width: 50px; height: 30px; padding: 3px; border-radius: var(--radius-pill); background: #d2d5dd; flex: none; }.toggle span { display: block; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform var(--dur-med) var(--ease-standard); }.toggle.is-on, .toggle[aria-pressed="true"] { background: var(--color-brand); }.toggle.is-on span, .toggle[aria-pressed="true"] span { transform: translateX(20px); }.setting-row > .toggle { margin-left: auto; }
 .profile-card { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-6) 0; padding: var(--space-5); border-radius: var(--radius-lg); background: var(--color-sky); }.profile-avatar { width: 58px; height: 58px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--color-coral); color: var(--color-text); font-size: 24px; font-weight: 800; }.profile-card .screen-title { font-size: var(--text-title); margin-top: 2px; }.settings-group { display: grid; gap: var(--space-2); margin-top: var(--space-5); }.setting-row { width: 100%; min-height: 64px; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-radius: var(--radius-md); background: var(--color-surface); box-shadow: var(--shadow-card); color: var(--color-text); }.setting-row > span:nth-child(2) { flex: 1; display: grid; gap: 2px; }.setting-row strong { font-size: var(--text-body); }.setting-row small { font-size: var(--text-meta); color: var(--color-text-muted); }.setting-row b { color: var(--color-brand); font-size: 24px; font-weight: 400; }.setting-icon { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; background: var(--color-sky); color: var(--color-brand); font-weight: 800; }.accessibility-note { margin-top: var(--space-5); padding: var(--space-4); border-radius: var(--radius-md); background: var(--color-mint); }.accessibility-note strong { font-size: var(--text-body); }.accessibility-note p { margin-top: var(--space-2); font-size: var(--text-label); line-height: 1.5; }
+
+/* ==========================================================================
+   Navigasi tanpa bottom-nav: entry controls di atas peta Beranda.
+   ========================================================================== */
+
+.home-top-controls {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 600;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.home-top-controls .map-control-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.home-top-controls__trip {
+  position: relative;
+  color: var(--color-brand);
+}
+
+.home-trip-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-coral);
+  border: 2px solid var(--color-surface);
+}
+
+/* ==========================================================================
+   Sheet mode "Cari rute" — panel di atas peta Beranda yang sama.
+   ========================================================================== */
+
+.route-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 700;
+  max-height: 84%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: var(--shadow-nav);
+  transform: translateY(100%);
+  transition: transform var(--dur-med) var(--ease-standard);
+  pointer-events: none;
+}
+
+.route-sheet[data-sheet-state="open"] {
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.route-sheet .home-sheet__grip {
+  margin: var(--space-2) auto 0;
+}
+
+.route-sheet__head {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  padding: var(--space-2) var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.route-sheet__title {
+  text-align: center;
+  font-weight: 800;
+  font-size: var(--text-card);
+  color: var(--color-text);
+}
+
+.back-btn {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--color-text);
+}
+
+.route-sheet__body {
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-4) var(--space-6);
+  -webkit-overflow-scrolling: touch;
+}
 
 /* ==========================================================================
    Jendela pendek (desktop/tablet): scaling frame proporsional.

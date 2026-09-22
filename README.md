@@ -1,11 +1,20 @@
-# Trans Semarang Live — High-Fidelity HTML Prototype (V2: Tab Rute Gabungan)
+# Trans Semarang Live — High-Fidelity HTML Prototype (V3: Satu Halaman / KISS)
 
 Prototype konsep untuk **SwitchFest 2026 UI/UX Design Competition**.
 
-> **Perubahan arsitektur:** tab **Rute** kini menggabungkan Live Map, Route Search,
-> dan Route Results V1 menjadi satu halaman — peta simulasi penuh di atas +
-> panel Ringkas/Daftar di bawah. Beranda dan fitur V1 lain (Trip, Jelajah, Profil,
-> detail halte/bus, alert) tetap dipertahankan.
+> **Perubahan arsitektur (V3 — KISS, mengikuti pola Google Maps):** bottom
+> navigation **dihapus**. Aplikasi kini **satu halaman: Beranda**, dengan **satu
+> peta nyata** (Leaflet/OpenStreetMap) sebagai pusatnya. Semua alur lain menjadi
+> **mode/overlay di atas peta yang sama** dan dibuka dari Beranda:
+>
+> - **Cari Rute** → bottom sheet di atas peta Beranda (tujuan, filter koridor,
+>   opsi rute A/B/C, mulai trip). Tidak ada peta kedua / peta SVG tiruan.
+> - **Trip** → layar status perjalanan aktif (dibuka setelah memilih rute).
+> - **Jelajah (Kota Lama)** dan **Profil/Aksesibilitas** → overlay, dibuka dari
+>   ikon di kanan atas peta.
+>
+> Rasional: satu peta yang dikerjakan dengan sangat baik lebih kuat untuk
+> presentasi juri daripada dua peta (satu nyata, satu tiruan) yang membingungkan.
 
 > “Tahu kapan bus tiba, tahu seberapa penuh, tanpa menebak.”
 
@@ -40,21 +49,23 @@ Lalu buka alamat yang ditampilkan (mis. `http://localhost:8000`).
 - **Layar Home (peta nyata + bottom sheet, inspirasi HomeReference):** **peta
   OpenStreetMap asli** (Leaflet, gratis tanpa API key) memenuhi seluruh layar dan
   dapat digeser/zoom, dengan marker halte & bus **simulasi** di atasnya. Bottom sheet
-  dengan header "bubble" merah transparan (blur) + tombol pusatkan lokasi, lalu panel
-  putih berisi judul merah "Bus berikutnya" dan daftar bus bergaya timeline serta
-  pencarian rute. Tombol recenter mengembalikan peta ke koridor utama.
-- **Layar perjalanan utama:** onboarding, detail halte, detail bus, pencarian rute,
-  hasil rute, trip aktif, info layanan, Kota Lama mode, profil/pengaturan, dan aksesibilitas.
-- **Tab Rute gabungan:** peta simulasi SVG penuh (koridor dengan pola garis berbeda,
-  halte, lokasi pengguna, bus bergerak via `requestAnimationFrame`, filter koridor,
-  freshness chip, recenter, legend) + panel Ringkas/Daftar dengan 3 tab internal
-  (Rute / Halte / Bus), search tujuan → Route A/B/C, detail rute + pilih halte
-  naik/turun, "Pilih rute/bus ini" → satu `activeTrip` di tab Trip, dan mode
-  pelacakan trip di peta ("Jelajahi rute lain" tanpa mengakhiri trip).
-  Tidak memakai API GPS/map nyata.
-- **Alur klik:** Home → Stop Detail/Bus Detail/Alert; Cari rute → hasil → trip aktif;
-  bottom navigation berpindah ke Beranda/Rute/Trip/Jelajah/Profil; destination Kota Lama
-  membuka pencarian rute; trip aktif memiliki progres halte interaktif.
+  dapat **digeser (drag) atau di-tap** untuk 3 tinggi: **peta penuh** (sheet
+  dikecilkan hingga menyisakan grip + chip aksi), **ringkas** (default), dan
+  **daftar diperluas** — geser ke bawah saat berada di puncak isi untuk membuka
+  peta penuh. Chip **"Bus terdekat"** memusatkan kamera ke bus terdekat dan chip
+  **"Halte terdekat"** memusatkan ke halte terdekat — keduanya menyorot marker
+  terpilih (berdenyut) sekaligus menampilkan toast ETA/jarak & kepadatan. Tombol
+  recenter mengembalikan peta ke koridor utama.
+- **Layar perjalanan utama:** onboarding, detail halte, detail bus, trip aktif,
+  info layanan, Kota Lama mode, profil/pengaturan, dan aksesibilitas — dibuka
+  sebagai overlay/layar dari Beranda (tanpa bottom nav).
+- **Mode Cari Rute (bottom sheet di atas peta Beranda):** input tujuan, filter
+  koridor (menyaring marker bus di peta nyata), opsi rute A/B/C, detail rute +
+  pilih halte naik/turun, "Pilih rute ini" → satu `activeTrip` yang langsung
+  membuka layar Trip.
+- **Alur klik:** Beranda → Stop Detail/Bus Detail/Alert; "Mau ke mana? Cari rute…"
+  → sheet Cari Rute → hasil → Trip aktif; ikon kanan atas → Jelajah / Profil;
+  tombol Trip muncul saat ada perjalanan aktif.
 - **Demo controls** (di luar frame ponsel): `Live`, `Recent`, `Schedule`,
   `Data tidak tersedia`, `Koneksi lemah` — mengubah chip kesegaran, format ETA,
   banner offline, dan caption peta.

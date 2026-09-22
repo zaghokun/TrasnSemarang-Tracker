@@ -50,14 +50,6 @@ const STOPS = [
 const HOME_MAP_CENTER = [-6.9780, 110.4170];
 const HOME_MAP_ZOOM = 14;
 
-// Tinggi area peta yang tertutup bottom sheet (px di viewport ponsel).
-// Dipakai untuk menggeser peta agar marker berada di area yang terlihat.
-function homeMapSheetOffset() {
-  const canvas = document.getElementById("home-map-leaflet");
-  if (!canvas) return 0;
-  return Math.round(canvas.clientHeight * 0.26); // dorong koridor ke area peta yang terlihat
-}
-
 const CORRIDORS = [
   { key: "corridor-1", label: "Koridor 1", description: "Simpang Lima → Kota Lama", buses: 3 },
   { key: "corridor-2", label: "Koridor 2", description: "Simpang Lima → Tembalang", buses: 1 },
@@ -81,65 +73,18 @@ const DATA_STATES = {
 };
 
 /* --------------------------------------------------------------------------
- * State bersama (activeTab, panel, selection, activeTrip, dataState)
+ * State bersama (screen aktif, selection, activeTrip, dataState)
  * ------------------------------------------------------------------------ */
 
 const appState = {
-  activeTab: "home",
-  panelHeight: "ringkas",          // "ringkas" | "daftar"
-  panelTab: "rute",               // "rute" | "halte" | "bus"
+  screen: "home",                  // layar yang sedang tampil
   selection: { type: null, id: null, routeId: null },
-  routeMode: { view: "default", corridorFilter: "all", followBusId: null, legendOpen: false, destination: null },
+  routeMode: { corridorFilter: "all", destination: null },
   activeTrip: { exists: false, status: "empty", routeId: null, busId: null, stopsRemaining: null },
   dataState: "live",
   homeStopId: "stop-simpanglima",  // halte yang sedang ditampilkan di bottom sheet Beranda
   preferences: { reducedMotion: false },
 };
-
-/* --------------------------------------------------------------------------
- * Animasi bus: requestAnimationFrame, hormati reduced-motion,
- * berhenti saat tab Rute tidak terlihat.
- * ------------------------------------------------------------------------ */
-
-const BUS_PATH = { x1: 20, y1: 264, x2: 340, y2: 54 }; // titik awal/akhir koridor 1
-let busAnimationId = null;
-const busProgress = { "TS-101": 0.25, "TS-104": 0.65, "TS-109": 0.45, "TS-204": 0.8 };
-
-function busPoint(progress, phase = 0) {
-  const t = (progress + phase) % 1;
-  const x = BUS_PATH.x1 + (BUS_PATH.x2 - BUS_PATH.x1) * t;
-  const y = BUS_PATH.y1 + (BUS_PATH.y2 - BUS_PATH.y1) * t;
-  return { x: (x / 360) * 100, y: (y / 330) * 100 };
-}
-
-function animateBuses(timestamp) {
-  if (appState.activeTab !== "route" || appState.dataState !== "live") {
-    busAnimationId = null;
-    return;
-  }
-  Object.keys(busProgress).forEach((id, i) => {
-    busProgress[id] += 0.0006;
-    const el = document.querySelector(`[data-map-bus="${id}"].live-bus`);
-    if (el) {
-      const p = busPoint(busProgress[id], i * 0.05);
-      el.style.left = `${p.x}%`;
-      el.style.top = `${p.y}%`;
-    }
-  });
-  busAnimationId = requestAnimationFrame(animateBuses);
-}
-
-function startBusAnimation() {
-  const reduced = appState.preferences.reducedMotion ||
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduced || busAnimationId) return;
-  busAnimationId = requestAnimationFrame(animateBuses);
-}
-
-function stopBusAnimation() {
-  if (busAnimationId) cancelAnimationFrame(busAnimationId);
-  busAnimationId = null;
-}
 
 /* --------------------------------------------------------------------------
  * Helper ETA (dipakai ulang dari V1)
@@ -306,11 +251,20 @@ function busDetailHTML(bus) {
       <section class="info-detail__section">
         <h3 class="section__title">Status perjalanan</h3>
         <div class="info-detail__bus-list">
-          <div class="info-detail__row"><div><strong>${bus.position}</strong><small>posisi dari GPS bus</small></div></div>
-          <div class="info-detail__row"><div><strong>+${bus.boarded} naik · −${bus.alighted} turun</strong><small>sensor naik/turun (interval terakhir)</small></div></div>
-          <div class="info-detail__row"><div><strong>Keterisian ${pct}%</strong><small>dari kapasitas ${bus.capacity} kursi</small></div>
-            <span class="info-detail__spacer"></span>${crowdBadgeHTML(bus.crowd)}</div>
-          <div class="info-detail__row"><div><strong>${bus.note}</strong><small>catatan untuk perjalanan ini</small></div></div>
+          <div class="info-detail__row">
+            ${crowdBadgeHTML(bus.crowd)}
+            <div><strong>Keterisian ${pct}%</strong><small>dari kapasitas ${bus.capacity} kursi</small></div>
+            <span class="info-detail__spacer"></span>
+            <span class="info-detail__value">${bus.onboard}/${bus.capacity}</span>
+          </div>
+          <div class="info-detail__row">
+            <div><strong>${bus.position}</strong><small>posisi dari GPS bus</small></div>
+            <span class="info-detail__spacer"></span>
+            <span class="info-detail__value info-detail__value--soft">+${bus.boarded} naik · −${bus.alighted} turun</span>
+          </div>
+          <div class="info-detail__row">
+            <div><strong>${bus.note}</strong><small>catatan untuk perjalanan ini</small></div>
+          </div>
         </div>
       </section>
     </div>`;
@@ -328,39 +282,58 @@ function renderStopBuses() {
 }
 
 /* --------------------------------------------------------------------------
- * Render — Tab Rute: marker peta + panel (3 tab internal)
+ * Mode Cari Rute — sheet di atas peta Beranda yang sama (Leaflet).
+ * Tidak ada peta kedua: pencarian rute hanya panel + filter koridor.
  * ------------------------------------------------------------------------ */
 
-function routeMapBuses() {
-  return BUSES.filter((bus) => appState.routeMode.corridorFilter === "all" || bus.corridorKey === appState.routeMode.corridorFilter);
+/* Bus yang lolos filter koridor aktif. */
+function visibleBusesByCorridor() {
+  const f = appState.routeMode.corridorFilter;
+  return BUSES.filter((bus) => f === "all" || bus.corridorKey === f);
 }
 
-function renderRouteMap() {
-  const layer = document.getElementById("route-bus-layer");
-  const stopsLayer = document.getElementById("route-stop-layer");
-  const canvas = document.getElementById("route-canvas");
-  if (!layer || !stopsLayer) return;
-  if (canvas) canvas.classList.toggle("has-selected-route", !!appState.selection.routeId);
-  const visible = routeMapBuses();
-  const state = DATA_STATES[appState.dataState];
-  const mode = state.etaMode;
-  const busesShown = state.busesVisible ? visible : [];
+/* Terapkan filter koridor pada marker bus di peta Beranda. */
+function applyCorridorFilterToHomeMap() {
+  const visibleIds = new Set(visibleBusesByCorridor().map((b) => b.id));
+  const busesShown = DATA_STATES[appState.dataState].busesVisible;
+  Object.entries(homeBusMarkers).forEach(([id, marker]) => {
+    const el = marker.getElement();
+    const show = busesShown && visibleIds.has(id);
+    if (el) el.style.display = show ? "" : "none";
+  });
+}
 
-  layer.innerHTML = busesShown.map((bus, i) => {
-    const cls = ["one", "two", "three", "four"][i % 4];
-    const selected = appState.selection.type === "bus" && appState.selection.id === bus.id ? " is-selected" : "";
-    const stale = appState.dataState === "recent" || appState.dataState === "weak" ? " is-stale" : "";
-    return `<button class="live-bus live-bus--${cls}${selected}${stale}" type="button" data-map-bus="${bus.id}"
-      aria-label="Bus ${bus.id}, ${bus.corridor}, tiba ${etaText(bus, mode)}, kepadatan ${CROWD_LABEL[bus.crowd]}">
-      <svg class="icon" aria-hidden="true"><use href="#i-bus" /></svg><span class="live-bus__id">${bus.id.replace("TS-", "")}</span></button>`;
-  }).join("");
-
-  stopsLayer.innerHTML = STOPS.map((stop) => {
-    const posClass = stop.id === "stop-simpanglima" ? "one" : stop.id === "stop-pahlawan" ? "two" : stop.id === "stop-kotalama" ? "three" : "four";
-    return `<button class="map-stop map-stop--${posClass}" type="button" data-map-stop="${stop.id}"
-      aria-label="${stop.name}, jarak ${stop.distance} meter, ${stop.corridor}">
-      <span></span><b>${stop.name.replace("Halte ", "")}</b></button>`;
-  }).join("");
+/* Isi sheet Cari Rute: input tujuan, filter koridor, opsi rute A/B/C. */
+function renderRouteSheet() {
+  const body = document.getElementById("route-sheet-body");
+  if (!body) return;
+  const filter = appState.routeMode.corridorFilter;
+  const corridors = CORRIDORS.filter((c) => filter === "all" || c.key === filter);
+  const searchQuery = appState.routeMode.destination || "";
+  body.innerHTML = `
+    <div class="panel-section">
+      <label class="panel-search-label">Tujuan
+        <input class="panel-search-input" id="panel-destination" type="text" value="${searchQuery}"
+          placeholder="Mis. Kota Lama" autocomplete="off" />
+      </label>
+    </div>
+    <div class="panel-section">
+      <div class="section__head"><h2 class="section__title">Filter koridor</h2><span class="muted">${corridors.length} aktif</span></div>
+      <div class="map-filter-row" role="group" aria-label="Filter koridor">
+        <button class="map-filter${filter === "all" ? " is-active" : ""}" type="button" data-panel-corridor="all">Semua</button>
+        ${CORRIDORS.map((c) => `<button class="map-filter${filter === c.key ? " is-active" : ""}" type="button" data-panel-corridor="${c.key}">${c.label}</button>`).join("")}
+      </div>
+    </div>
+    <div class="panel-section" id="panel-route-results">
+      <div class="section__head"><h2 class="section__title">Pilihan rute</h2><span class="muted">simulasi</span></div>
+      ${ROUTE_OPTIONS.map((r) => `
+        <button class="route-option route-option--panel${appState.selection.routeId === r.id ? " is-selected" : ""}" type="button" data-select-route="${r.id}">
+          <span class="route-option__label">${r.label}</span><strong>${r.time} menit</strong>
+          <span>${r.transfers} transfer · <b class="crowd-text--${r.crowd}">${CROWD_LABEL[r.crowd]}</b></span>
+          <small>${r.via}</small>
+        </button>`).join("")}
+    </div>
+    ${routeDetailHTML(appState.selection.routeId)}`;
 }
 
 function routeDetailHTML(routeId) {
@@ -383,108 +356,26 @@ function routeDetailHTML(routeId) {
     </div>`;
 }
 
-function renderPanelRute() {
-  const el = document.getElementById("panel-rute");
-  if (!el) return;
-  const filter = appState.routeMode.corridorFilter;
-  const corridors = CORRIDORS.filter((c) => filter === "all" || c.key === filter);
-  const searchQuery = appState.routeMode.destination || "";
-  el.innerHTML = `
-    <div class="panel-section">
-      <label class="panel-search-label">Tujuan
-        <input class="panel-search-input" id="panel-destination" type="text" value="${searchQuery}" placeholder="Mis. Kota Lama" />
-      </label>
-    </div>
-    <div class="panel-section">
-      <div class="section__head"><h2 class="section__title">Koridor</h2><span class="muted">${corridors.length} aktif</span></div>
-      ${corridors.map((c) => `
-        <button class="panel-corridor-row" type="button" data-select-corridor="${c.key}">
-          <span class="corridor-line corridor-line--${c.key}" aria-hidden="true"></span>
-          <span class="panel-corridor-row__info"><strong>${c.label}</strong><small>${c.description}</small></span>
-          <span class="eta-chip">${c.buses} bus</span>
-        </button>`).join("")}
-    </div>
-    <div class="panel-section" id="panel-route-results">
-      <div class="section__head"><h2 class="section__title">Tembalang → Kota Lama</h2><span class="muted">simulasi</span></div>
-      ${ROUTE_OPTIONS.map((r) => `
-        <button class="route-option route-option--panel${appState.selection.routeId === r.id ? " is-selected" : ""}" type="button" data-select-route="${r.id}">
-          <span class="route-option__label">${r.label}</span><strong>${r.time} menit</strong>
-          <span>${r.transfers} transfer · <b class="crowd-text--${r.crowd}">${CROWD_LABEL[r.crowd]}</b></span>
-          <small>${r.via}</small>
-        </button>`).join("")}
-    </div>
-    ${routeDetailHTML(appState.selection.routeId)}`;
+/* Buka / tutup sheet Cari Rute (mode di atas peta Beranda). */
+function openRouteSheet() {
+  const sheet = document.getElementById("route-sheet");
+  if (!sheet) return;
+  sheet.dataset.sheetState = "open";
+  sheet.setAttribute("aria-hidden", "false");
+  renderRouteSheet();
+  const input = document.getElementById("panel-destination");
+  if (input) input.focus();
 }
 
-function renderPanelHalte() {
-  const el = document.getElementById("panel-halte");
-  if (!el) return;
-  const sorted = [...STOPS].sort((a, b) => a.distance - b.distance);
-  el.innerHTML = `
-    <div class="panel-section">
-      <div class="section__head"><h2 class="section__title">Halte terdekat</h2><span class="muted">${sorted.length}</span></div>
-      ${sorted.map((stop) => `
-        <button class="panel-stop-row" type="button" data-map-stop="${stop.id}">
-          <span class="stop-card__pin stop-card__pin--sm"><svg class="icon"><use href="#i-location" /></svg></span>
-          <span class="panel-stop-row__info"><strong>${stop.name}</strong><small>${stop.distance} m · ${stop.corridor}${stop.accessible ? " · akses tersedia" : ""}</small></span>
-          <svg class="icon panel-row-chev" aria-hidden="true"><use href="#i-chevron" /></svg>
-        </button>`).join("")}
-    </div>`;
-}
-
-function renderPanelBus() {
-  const el = document.getElementById("panel-bus");
-  if (!el) return;
-  const state = DATA_STATES[appState.dataState];
-  const mode = state.etaMode;
-  el.innerHTML = `
-    <div class="panel-section">
-      <div class="section__head"><h2 class="section__title">Bus beroperasi</h2><span class="muted">${BUSES.length} bus</span></div>
-      ${BUSES.map((bus) => `
-        <button class="map-bus-row" type="button" data-map-bus="${bus.id}">
-          <span class="bus-card__badge"><svg class="icon"><use href="#i-bus" /></svg></span>
-          <span class="map-bus-row__info"><strong>${bus.id} · ${bus.corridor}</strong><small>${bus.position} · arah ${bus.destination}</small></span>
-          <span class="eta-chip">${etaText(bus, mode)}</span>
-          ${crowdBadgeHTML(bus.crowd)}
-        </button>`).join("")}
-      <button class="btn btn--primary btn--full" type="button" data-choose-bus="${appState.selection.type === "bus" ? appState.selection.id : ""}" id="choose-bus-btn"${appState.selection.type === "bus" ? "" : " disabled"}>${appState.selection.type === "bus" ? `Pilih bus ini (${appState.selection.id})` : "Pilih bus di peta atau daftar dahulu"}</button>
-    </div>`;
-}
-
-function renderRoutePanels() {
-  renderPanelRute();
-  renderPanelHalte();
-  renderPanelBus();
+function closeRouteSheet() {
+  const sheet = document.getElementById("route-sheet");
+  if (!sheet) return;
+  sheet.dataset.sheetState = "hidden";
+  sheet.setAttribute("aria-hidden", "true");
 }
 
 /* --------------------------------------------------------------------------
- * Panel — toggle Ringkas/Daftar + tab internal
- * ------------------------------------------------------------------------ */
-
-function applyPanelHeight() {
-  const panel = document.getElementById("route-panel");
-  const handle = document.getElementById("panel-handle");
-  if (!panel || !handle) return;
-  const expanded = appState.panelHeight === "daftar";
-  panel.classList.toggle("is-expanded", expanded);
-  handle.setAttribute("aria-expanded", String(expanded));
-  handle.querySelector("span").textContent = expanded ? "Ringkas" : "Daftar";
-}
-
-function applyPanelTab() {
-  document.querySelectorAll(".panel-tab").forEach((tab) => {
-    const active = tab.dataset.panelTab === appState.panelTab;
-    tab.classList.toggle("is-active", active);
-    tab.setAttribute("aria-selected", String(active));
-  });
-  ["rute", "halte", "bus"].forEach((key) => {
-    const section = document.getElementById(`panel-${key}`);
-    if (section) section.hidden = key !== appState.panelTab;
-  });
-}
-
-/* --------------------------------------------------------------------------
- * Demo controls → data state (Beranda + Rute)
+ * Demo controls → data state (Beranda)
  * ------------------------------------------------------------------------ */
 
 function applyState(state) {
@@ -504,19 +395,9 @@ function applyState(state) {
   if (banner) banner.hidden = !cfg.offline;
   if (note) note.textContent = cfg.note;
 
-  // Freshness chip di tab Rute
-  const routeChip = document.getElementById("route-freshness");
-  if (routeChip) {
-    routeChip.className = `freshness freshness--floating ${cfg.chipClass}`.trim();
-    routeChip.querySelector(".freshness__text").textContent = cfg.chipText;
-  }
-
   renderBuses(state);
-  renderRouteMap();
-  renderRoutePanels();
-
-  if (appState.dataState === "live" && appState.activeTab === "route") startBusAnimation();
-  else stopBusAnimation();
+  applyCorridorFilterToHomeMap();
+  if (typeof renderRouteSheet === "function") renderRouteSheet();
 
   document.querySelectorAll(".demo-btn").forEach((btn) => {
     btn.classList.toggle("is-active", btn.dataset.state === state);
@@ -524,210 +405,129 @@ function applyState(state) {
 }
 
 /* --------------------------------------------------------------------------
- * Navigasi tab & layar
+ * Navigasi antar-layar (tanpa bottom nav — semua dari Beranda)
  * ------------------------------------------------------------------------ */
 
-const TAB_TO_SCREEN = { home: "home", route: "route", trip: "trip", explore: "explore", profile: "profile" };
+// Layar sekunder yang bisa dibuka dari Beranda / flow.
+const SCREEN_NAMES = ["home", "trip", "explore", "profile", "onboarding", "stop", "alerts", "accessibility"];
 
-// Hero header ("Selamat pagi...") hanya milik Beranda; layar lain memakai areanya sendiri
 function setHeroVisible(screenName) {
   const hero = document.querySelector(".hero");
   if (hero) hero.hidden = screenName !== "home";
 }
 
-function showTab(tab, options = {}) {
-  appState.activeTab = tab;
-  const targetScreen = options.screenOverride || TAB_TO_SCREEN[tab];
-  document.querySelectorAll(".screen-view").forEach((screen) => {
-    screen.hidden = screen.dataset.screen !== targetScreen;
-  });
-  setHeroVisible(targetScreen);
-  document.querySelectorAll(".nav-item").forEach((item) => {
-    const isActive = item.dataset.tab === tab;
-    item.classList.toggle("is-active", isActive);
-    if (isActive) item.setAttribute("aria-current", "page");
-    else item.removeAttribute("aria-current");
-  });
-  const content = document.querySelector(`[data-screen="${TAB_TO_SCREEN[tab]}"]`);
-  if (content) content.scrollTop = 0;
-
-  if (options.routeView) appState.routeMode.view = options.routeView;
-  if (options.panelTab) { appState.panelTab = options.panelTab; applyPanelTab(); }
-  if (options.focusBus) { appState.selection = { type: "bus", id: options.focusBus }; }
-  if (options.focusStop) { appState.selection = { type: "stop", id: options.focusStop }; }
-  if (tab === "route") {
-    renderRouteMap();
-    applyPanelHeight();
-    applyTripTrackingUI();
-    startBusAnimation();
-  } else {
-    stopBusAnimation();
-  }
-}
-
-// Kompatibilitas dengan layar detail V1 (stop, bus, alerts, accessibility)
-function showLegacyScreen(screenName) {
+/* Tampilkan satu layar (semua layar lain disembunyikan). */
+function showScreen(screenName) {
   document.querySelectorAll(".screen-view").forEach((screen) => {
     screen.hidden = screen.dataset.screen !== screenName;
   });
   setHeroVisible(screenName);
-  stopBusAnimation();
+  const content = document.querySelector(`[data-screen="${screenName}"]`);
+  if (content) content.scrollTop = 0;
+  if (screenName !== "home") closeRouteSheet();
+  updateHomeChrome();
 }
 
+function goHome() {
+  closeRouteSheet();
+  showScreen("home");
+}
+
+/* Tombol/aksi Beranda → layar. */
 function initNavigation() {
   document.addEventListener("click", (event) => {
-    const tabBtn = event.target.closest("[data-tab]");
-    if (tabBtn) { showTab(tabBtn.dataset.tab); return; }
+    // Tombol di Beranda
+    if (event.target.closest("#home-explore-btn")) { showScreen("explore"); return; }
+    if (event.target.closest("#home-profile-btn")) { showScreen("profile"); return; }
+    if (event.target.closest("#home-trip-btn")) { showScreen("trip"); return; }
 
     const trigger = event.target.closest("[data-go]");
     if (!trigger) return;
     const dest = trigger.dataset.go;
     event.preventDefault();
 
-    // "Lihat di peta" dari Stop/Bus Detail V1 → tab Rute terfokus
+    // Pencarian rute → buka sheet Cari Rute di atas peta Beranda
+    if (dest === "map" || dest === "route-search" || dest === "route-results") {
+      showScreen("home");
+      openRouteSheet();
+      return;
+    }
+    // "Lihat di peta" dari detail halte → fokus halte di peta Beranda
     const focusStopBtn = event.target.closest("[data-focus-stop]");
     if (focusStopBtn) {
-      showTab("route", { panelTab: "halte" });
-      appState.selection = { ...appState.selection, type: "stop", id: focusStopBtn.dataset.focusStop };
-      renderRouteMap();
+      showScreen("home");
+      showHomeStop(focusStopBtn.dataset.focusStop, { pan: true, flash: true });
       return;
     }
-
-    // Destinasi lama V1 yang kini masuk tab Rute
-    if (dest === "map" || dest === "route-search" || dest === "route-results") {
-      showTab("route", { routeView: dest === "route-search" ? "search" : "default" });
-      return;
-    }
-    if (dest === "home" || dest === "trip" || dest === "explore" || dest === "profile") {
-      showTab(dest);
-      return;
-    }
-    // Detail V1 lain (stop, bus, alerts, accessibility, onboarding)
-    showLegacyScreen(dest);
+    if (dest === "home") { goHome(); return; }
+    if (SCREEN_NAMES.includes(dest)) { showScreen(dest); return; }
+    showScreen(dest);
   });
 }
 
 /* --------------------------------------------------------------------------
- * Interaksi panel Rute
+ * Interaksi sheet Cari Rute (mode di atas peta Beranda)
  * ------------------------------------------------------------------------ */
 
-function initRoutePanel() {
-  const handle = document.getElementById("panel-handle");
-  if (handle) {
-    handle.addEventListener("click", () => {
-      appState.panelHeight = appState.panelHeight === "ringkas" ? "daftar" : "ringkas";
-      applyPanelHeight();
-    });
-  }
+function initRouteSheet() {
+  const sheet = document.getElementById("route-sheet");
+  const grip = document.getElementById("route-sheet-grip");
+  const back = document.getElementById("route-sheet-back");
+  if (grip) grip.addEventListener("click", closeRouteSheet);
+  if (back) back.addEventListener("click", closeRouteSheet);
 
-  document.querySelectorAll(".panel-tab").forEach((tab) => {
-    tab.addEventListener("click", () => {
-      appState.panelTab = tab.dataset.panelTab;
-      applyPanelTab();
-    });
+  // Filter koridor di dalam sheet
+  if (sheet) sheet.addEventListener("click", (event) => {
+    const cor = event.target.closest("[data-panel-corridor]");
+    if (cor) {
+      appState.routeMode.corridorFilter = cor.dataset.panelCorridor;
+      applyCorridorFilterToHomeMap();
+      renderRouteSheet();
+      return;
+    }
+    // Pilih opsi rute → tampilkan detail
+    const selectRoute = event.target.closest("[data-select-route]");
+    if (selectRoute) {
+      appState.selection = { ...appState.selection, routeId: selectRoute.dataset.selectRoute };
+      renderRouteSheet();
+      return;
+    }
+    const clearRoute = event.target.closest("[data-clear-route]");
+    if (clearRoute) {
+      appState.selection = { ...appState.selection, routeId: null };
+      renderRouteSheet();
+      return;
+    }
+    // Pilih rute ini → buat trip aktif, buka layar Trip
+    const chooseRoute = event.target.closest("[data-choose-route]");
+    if (chooseRoute) {
+      startActiveTrip(appState.selection.routeId || "route-b", null);
+      return;
+    }
   });
 
-  document.querySelectorAll(".map-filter").forEach((filter) => {
-    filter.addEventListener("click", () => {
-      appState.routeMode.corridorFilter = filter.dataset.mapRoute;
-      document.querySelectorAll(".map-filter").forEach((f) => f.classList.toggle("is-active", f === filter));
-      renderRouteMap();
-      renderRoutePanels();
-    });
-  });
-
-  // Input tujuan di panel Rute (delegasi — di-render ulang)
+  // Input tujuan (delegasi — di-render ulang)
   document.addEventListener("input", (event) => {
     if (event.target.id === "panel-destination") {
       appState.routeMode.destination = event.target.value;
     }
   });
+}
 
-  // Search bar mengambang di peta → fokus ke input panel
-  const routeSearchBar = document.getElementById("route-search-bar");
-  if (routeSearchBar) routeSearchBar.addEventListener("click", () => {
-    appState.panelHeight = "daftar";
-    appState.panelTab = "rute";
-    applyPanelHeight();
-    applyPanelTab();
-    const input = document.getElementById("panel-destination");
-    if (input) input.focus();
-  });
-
-  // Delegasi klik marker bus/halte (di-render ulang, jadi pakai delegation)
-  document.addEventListener("click", (event) => {
-    const busBtn = event.target.closest("[data-map-bus]");
-    if (busBtn) {
-      appState.selection = { type: "bus", id: busBtn.dataset.mapBus };
-      appState.routeMode.followBusId = busBtn.dataset.mapBus;
-      renderRouteMap();
-      const toast = document.getElementById("route-toast");
-      const bus = BUSES.find((b) => b.id === busBtn.dataset.mapBus);
-      if (toast && bus) toast.textContent = `${bus.id} · ${bus.corridor} · arah ${bus.destination} · ${CROWD_LABEL[bus.crowd]} · kamera mengikuti bus`;
-      return;
-    }
-    const stopBtn = event.target.closest("[data-map-stop]");
-    if (stopBtn) {
-      appState.selection = { ...appState.selection, type: "stop", id: stopBtn.dataset.mapStop };
-      appState.panelTab = "halte";
-      applyPanelTab();
-      const stop = STOPS.find((s) => s.id === stopBtn.dataset.mapStop);
-      const toast = document.getElementById("route-toast");
-      if (toast && stop) toast.textContent = `${stop.name} · ${stop.distance} m · ${stop.corridor}`;
-      return;
-    }
-
-    // Pilih opsi rute → detail + sorot garis
-    const selectRoute = event.target.closest("[data-select-route]");
-    if (selectRoute) {
-      appState.selection = { ...appState.selection, routeId: selectRoute.dataset.selectRoute };
-      renderRouteMap();
-      renderPanelRute();
-      const toast = document.getElementById("route-toast");
-      if (toast) toast.textContent = "Rute disorot di peta — rute lain diredupkan";
-      return;
-    }
-
-    const clearRoute = event.target.closest("[data-clear-route]");
-    if (clearRoute) {
-      appState.selection = { ...appState.selection, routeId: null };
-      renderRouteMap();
-      renderPanelRute();
-      return;
-    }
-
-    // Pilih rute ini / bus ini → buat SATU trip aktif, pindah ke tab Trip
-    const chooseRoute = event.target.closest("[data-choose-route]");
-    const chooseBus = event.target.closest("[data-choose-bus]");
-    if (chooseRoute || chooseBus) {
-      const bus = appState.selection.type === "bus" ? appState.selection.id : "TS-101";
-      const routeId = appState.selection.routeId || "route-b";
-      appState.activeTrip = {
-        exists: true,
-        status: "waiting",
-        routeId,
-        busId: chooseBus ? appState.selection.id : bus,
-        stopsRemaining: 2,
-      };
-      renderTripScreen();
-      showTab("trip");
-      return;
-    }
-  });
-
-  const recenter = document.getElementById("route-recenter");
-  if (recenter) recenter.addEventListener("click", () => {
-    appState.routeMode.followBusId = null;
-    const toast = document.getElementById("route-toast");
-    if (toast) toast.textContent = "Peta dipusatkan ke lokasi Anda";
-  });
-
-  const legendToggle = document.getElementById("route-legend-toggle");
-  const legend = document.getElementById("route-legend");
-  if (legendToggle && legend) legendToggle.addEventListener("click", () => {
-    appState.routeMode.legendOpen = !appState.routeMode.legendOpen;
-    legend.hidden = !appState.routeMode.legendOpen;
-  });
+/* Mulai trip aktif dari sebuah rute / bus lalu tampilkan layar Trip. */
+function startActiveTrip(routeId, busId) {
+  const bus = busId || (appState.selection.type === "bus" ? appState.selection.id : "TS-101");
+  appState.activeTrip = {
+    exists: true,
+    status: "waiting",
+    routeId: routeId || "route-b",
+    busId: bus,
+    stopsRemaining: 2,
+  };
+  closeRouteSheet();
+  renderTripScreen();
+  showScreen("trip");
+  updateHomeChrome();
 }
 
 /* --------------------------------------------------------------------------
@@ -740,17 +540,16 @@ function renderTripScreen() {
   const t = appState.activeTrip;
   const bus = BUSES.find((b) => b.id === t.busId);
   const route = ROUTE_OPTIONS.find((r) => r.id === t.routeId);
-  const navTrip = document.querySelector('.nav-item[data-tab="trip"]');
-  if (navTrip) navTrip.classList.toggle("has-active-trip", t.exists && t.status !== "arrived");
+  updateHomeChrome();
 
   if (!t.exists) {
     screen.innerHTML = `
-      <div class="screen-topbar"><span>Trip</span><span></span></div>
+      <div class="screen-topbar"><button class="icon-btn icon-btn--small" type="button" data-go="home" aria-label="Kembali">‹</button><span>Trip</span><span></span></div>
       <section class="trip-empty">
         <span class="trip-empty__icon"><svg class="icon"><use href="#i-trip" /></svg></span>
         <h1 class="screen-title">Belum ada perjalanan</h1>
-        <p class="screen-copy">Pilih rute atau bus di tab Rute untuk memulai perjalananmu.</p>
-        <button class="btn btn--primary btn--full" type="button" data-tab="route">Jelajahi rute</button>
+        <p class="screen-copy">Cari rute dari Beranda untuk memulai perjalananmu.</p>
+        <button class="btn btn--primary btn--full" type="button" data-go="route-search">Cari rute</button>
       </section>`;
     return;
   }
@@ -794,14 +593,9 @@ function renderTripScreen() {
 }
 
 function applyTripTrackingUI() {
-  const banner = document.getElementById("trip-tracking-banner");
   const text = document.getElementById("trip-tracking-text");
-  const exploreBtn = document.getElementById("explore-other-routes");
   const t = appState.activeTrip;
-  const tracking = appState.routeMode.view === "tripTracking" && t.exists;
-  if (banner) banner.hidden = !tracking;
-  if (exploreBtn) exploreBtn.hidden = !tracking;
-  if (tracking && text) {
+  if (t.exists && text) {
     text.textContent = t.status === "riding" ? `Turun ${t.stopsRemaining} halte lagi` : `Menunggu ${t.busId}`;
   }
 }
@@ -811,22 +605,10 @@ function initTripEvents() {
     const t = appState.activeTrip;
 
     if (event.target.closest("#trip-view-map")) {
-      showTab("route");
-      appState.routeMode.followBusId = t.busId;
-      appState.routeMode.view = "tripTracking";
+      // Kembali ke peta Beranda dan sorot bus trip
+      showScreen("home");
       appState.selection = { ...appState.selection, type: "bus", id: t.busId };
-      renderRouteMap();
-      applyTripTrackingUI();
-      return;
-    }
-
-    if (event.target.closest("#explore-other-routes")) {
-      appState.routeMode.view = "default";
-      appState.routeMode.followBusId = null;
-      applyTripTrackingUI();
-      renderRouteMap();
-      const toast = document.getElementById("route-toast");
-      if (toast) toast.textContent = "Keluar dari mode pelacakan — trip tetap aktif di tab Trip";
+      recenterToBus(t.busId);
       return;
     }
 
@@ -878,8 +660,6 @@ function initToggles() {
       toggle.setAttribute("aria-pressed", String(!active));
       if (toggle.getAttribute("aria-label") === "Kurangi gerakan") {
         appState.preferences.reducedMotion = !active;
-        if (!active) stopBusAnimation();
-        else startBusAnimation();
       }
     });
   });
@@ -935,9 +715,10 @@ function renderHomeStopMarkers() {
   Object.values(homeStopMarkers).forEach((m) => homeMap.removeLayer(m));
   homeStopMarkers = {};
   visibleHomeStops().forEach((stop) => {
+    const selected = stop.id === appState.homeStopId ? " is-selected" : "";
     const icon = L.divIcon({
       className: "",
-      html: `<span class="map-stop-pin"><svg class="icon map-stop-pin__icon" aria-hidden="true"><use href="#i-bus-stop" /></svg>${stop.name.replace("Halte ", "")}</span>`,
+      html: `<span class="map-stop-pin${selected}"><svg class="icon map-stop-pin__icon" aria-hidden="true"><use href="#i-bus-stop" /></svg>${stop.name.replace("Halte ", "")}</span>`,
       iconSize: null,
       iconAnchor: [0, 0],
     });
@@ -1042,9 +823,7 @@ function initHomeMap() {
 /* Pusatkan peta ke lokasi pengguna (dengan offset sheet). */
 function homeRecenter() {
   if (!homeMap) return;
-  homeMap.setView(HOME_MAP_CENTER, HOME_MAP_ZOOM, { animate: false });
-  const offset = homeMapSheetOffset();
-  if (offset > 0) homeMap.panBy([0, offset], { animate: false });
+  centerWithSheetOffset(HOME_MAP_CENTER, HOME_MAP_ZOOM);
 }
 
 /* Fokus peta ke sebuah halte. */
@@ -1053,22 +832,74 @@ function showHomeStop(stopId, opts = {}) {
   if (!stop) return;
   appState.homeStopId = stop.id;
   if (homeMap) {
-    renderHomeStopMarkers(); // pastikan halte terpilih ikut tampil
+    clearBusHighlight(); // lepas sorotan bus bila ada
+    renderHomeStopMarkers(); // pastikan halte terpilih ikut tampil + tersorot
     if (opts.pan) {
-      const offset = homeMapSheetOffset();
-      homeMap.setView(stop.latlng, HOME_MAP_ZOOM, { animate: false });
-      if (offset > 0) homeMap.panBy([0, offset], { animate: false });
+      centerWithSheetOffset(stop.latlng, HOME_MAP_ZOOM);
+      if (opts.flash) pingStopMarker(stop.id);
     }
   }
 }
 
+/* Lepas sorotan + denyut pada semua marker bus. */
+function clearBusHighlight() {
+  Object.values(homeBusMarkers).forEach((marker) => {
+    const el = marker.getElement();
+    if (!el) return;
+    const dot = el.querySelector(".map-bus-dot");
+    if (dot) dot.classList.remove("is-selected", "is-pinged");
+  });
+  if (homeBusHighlightTimer) { clearTimeout(homeBusHighlightTimer); homeBusHighlightTimer = null; }
+}
+
+/* Denyut singkat pada marker halte terpilih. */
+let homeStopHighlightTimer = null;
+function pingStopMarker(stopId) {
+  if (appState.preferences.reducedMotion) return;
+  const marker = homeStopMarkers[stopId];
+  const el = marker && marker.getElement();
+  const pin = el && el.querySelector(".map-stop-pin");
+  if (!pin) return;
+  pin.classList.remove("is-pinged");
+  if (homeStopHighlightTimer) clearTimeout(homeStopHighlightTimer);
+  requestAnimationFrame(() => pin.classList.add("is-pinged"));
+  homeStopHighlightTimer = setTimeout(() => pin.classList.remove("is-pinged"), 1200);
+}
+
 /* Fokus peta ke sebuah bus (recenter ke posisi bus + sorot markernya). */
-function recenterToBus(busId) {
+let homeBusHighlightTimer = null;
+
+/* Pusatkan peta ke sebuah latlng, lalu geser agar titik berada di tengah
+   area peta yang terlihat (di atas bottom sheet). Sign-proof: setelah view
+   diterapkan, posisi titik diukur di layar lalu digeser sebesar selisihnya. */
+function centerWithSheetOffset(latlng, zoom) {
+  if (!homeMap) return;
+  homeMap.setView(latlng, zoom, { animate: false });
+
+  const sheet = document.getElementById("home-sheet");
+  const size = homeMap.getSize(); // area peta (px)
+  // Pakai tinggi TARGET (target state) agar hasil benar walau transisi CSS
+  // ketinggian sheet masih berjalan saat fungsi ini dipanggil.
+  const targetState = sheet ? (sheet.dataset.sheetState || "default") : "default";
+  const covered = sheet ? Math.min(sheetHeightPx(targetState), size.y) : 0;
+  const visibleBottom = size.y - covered;      // dasar area peta yang terlihat
+  const desiredY = visibleBottom / 2;          // tengah area yang terlihat
+
+  const current = homeMap.latLngToContainerPoint(latlng);
+  const deltaY = current.y - desiredY;         // geser titik ke posisi diinginkan
+  if (Math.abs(deltaY) > 0.5) homeMap.panBy([0, deltaY], { animate: false });
+}
+
+function recenterToBus(busId, flash = true) {
   const bus = BUSES.find((b) => b.id === busId);
   if (!bus || !homeMap) return;
-  const offset = homeMapSheetOffset();
-  homeMap.setView(bus.latlng, HOME_MAP_ZOOM + 1, { animate: true });
-  if (offset > 0) homeMap.panBy([0, offset], { animate: true });
+
+  // Lepas sorotan halte & bus lain, lalu fokuskan ke bus ini.
+  appState.homeStopId = null;
+  renderHomeStopMarkers();
+  clearBusHighlight();
+
+  centerWithSheetOffset(bus.latlng, HOME_MAP_ZOOM + 1);
 
   // Sorot marker bus terpilih, kosongkan lainnya.
   Object.entries(homeBusMarkers).forEach(([id, marker]) => {
@@ -1077,11 +908,203 @@ function recenterToBus(busId) {
     const dot = el.querySelector(".map-bus-dot");
     if (dot) dot.classList.toggle("is-selected", id === bus.id);
   });
+
+  // Denyut singkat: menarik perhatian ke bus yang baru difokuskan.
+  const reduced = appState.preferences.reducedMotion;
+  if (flash && !reduced) {
+    const marker = homeBusMarkers[bus.id];
+    const el = marker && marker.getElement();
+    const dot = el && el.querySelector(".map-bus-dot");
+    if (dot) {
+      dot.classList.remove("is-pinged");
+      if (homeBusHighlightTimer) clearTimeout(homeBusHighlightTimer);
+      requestAnimationFrame(() => dot.classList.add("is-pinged"));
+      homeBusHighlightTimer = setTimeout(() => dot.classList.remove("is-pinged"), 1200);
+    }
+  }
 }
 
 /* Bus terdekat (simulasi: ETA terkecil yang terlihat). */
 function nearestBus() {
   return [...BUSES].sort((a, b) => a.eta.min - b.eta.min)[0];
+}
+
+/* Toast singkat di Beranda (aria-live) — mengonfirmasi aksi tanpa membuka overlay. */
+let homeToastTimer = null;
+function showHomeToast(message) {
+  const toast = document.getElementById("home-toast");
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.add("is-visible");
+  if (homeToastTimer) clearTimeout(homeToastTimer);
+  homeToastTimer = setTimeout(() => toast.classList.remove("is-visible"), 2600);
+}
+
+/* --------------------------------------------------------------------------
+ * Bottom sheet Beranda — geser (drag) antara 3 tinggi:
+ *   full     : peta nyaris penuh (sheet hanya menyisakan grip + ringkasan)
+ *   default  : tinggi ringkas (62%) untuk daftar bus
+ *   expanded : daftar diperluas (92%)
+ * State disimpan di data-sheet-state; ketinggian aktual dibaca dari DOM.
+ * ------------------------------------------------------------------------ */
+
+const SHEET_STATES = ["full", "default", "expanded"];
+
+// Persentase tinggi sheet — harus selaras dengan token CSS:
+//   --home-sheet-height (default) & --home-sheet-expanded.
+const SHEET_HEIGHT_DEFAULT = 0.62;
+const SHEET_HEIGHT_EXPANDED = 0.92;
+
+function sheetViewportHeight() {
+  const screen = document.querySelector(".phone__screen") || document.documentElement;
+  return screen.clientHeight || 844;
+}
+
+function sheetHeightPx(state) {
+  const base = sheetViewportHeight();
+  if (state === "full") {
+    const token = getComputedStyle(document.documentElement).getPropertyValue("--home-sheet-full");
+    return parseFloat(token) || 96;
+  }
+  if (state === "expanded") return base * SHEET_HEIGHT_EXPANDED;
+  return base * SHEET_HEIGHT_DEFAULT;
+}
+
+function setSheetState(state, opts = {}) {
+  const sheet = document.getElementById("home-sheet");
+  if (!sheet) return;
+  if (!SHEET_STATES.includes(state)) return;
+  sheet.dataset.sheetState = state;
+
+  // Sinkronkan label aksesibilitas grip.
+  const grip = document.getElementById("home-sheet-grip");
+  if (grip) grip.setAttribute("aria-expanded", String(state === "expanded"));
+
+  // Offset kontrol peta tidak perlu di-set manual — ResizeObserver menanganinya.
+}
+
+/* Selaraskan posisi tombol recenter dengan tepi atas sheet.
+   Menulis tinggi sheet (px) ke variabel pada .home-map agar tombol tetap
+   sejajar walau sheet sedang dianimasikan atau digeser. */
+function updateSheetOffsetVar() {
+  const sheet = document.getElementById("home-sheet");
+  const map = document.querySelector(".home-map");
+  if (!sheet || !map) return;
+  const h = sheet.getBoundingClientRect().height;
+  map.style.setProperty("--home-sheet-px", `${Math.round(h)}px`);
+}
+
+function initHomeSheet() {
+  const sheet = document.getElementById("home-sheet");
+  const grip = document.getElementById("home-sheet-grip");
+  if (!sheet || !grip) return;
+
+  updateSheetOffsetVar();
+  setSheetState("default");
+
+  // Ikuti tinggi sheet secara kontinu: saat transisi CSS maupun saat drag.
+  if (typeof ResizeObserver !== "undefined") {
+    const ro = new ResizeObserver(() => updateSheetOffsetVar());
+    ro.observe(sheet);
+  } else {
+    // Fallback: rAF loop singkat saat state berubah sudah memadai.
+    updateSheetOffsetVar();
+  }
+
+  const body = document.getElementById("home-sheet-body");
+  let dragStartY = 0;
+  let dragStartHeight = 0;
+  let dragging = false;
+  let moved = false;
+  let pointerId = null;
+  let lastTargetState = "default";
+
+  const pointerToState = (deltaY) => {
+    // deltaY > 0 = drag ke bawah (kecilkan sheet)
+    const height = dragStartHeight - deltaY; // px tinggi sheet saat ini
+    let best = SHEET_STATES[0];
+    let bestDist = Infinity;
+    SHEET_STATES.forEach((s) => {
+      const d = Math.abs(sheetHeightPx(s) - height);
+      if (d < bestDist) { bestDist = d; best = s; }
+    });
+    return best;
+  };
+
+  const onMove = (event) => {
+    if (!dragging) return;
+    const deltaY = event.clientY - dragStartY;
+    if (Math.abs(deltaY) > 4) moved = true;
+    let height = dragStartHeight - deltaY;
+    // Batasi antara "full" dan "expanded"
+    height = Math.max(sheetHeightPx("full"), Math.min(sheetHeightPx("expanded"), height));
+    sheet.style.height = `${height}px`;
+    updateSheetOffsetVar();
+    const next = pointerToState(deltaY);
+    if (next !== lastTargetState) {
+      lastTargetState = next;
+      sheet.dataset.sheetState = next;
+    }
+  };
+
+  const endDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    sheet.classList.remove("is-dragging");
+    sheet.style.height = "";
+    const state = sheet.dataset.sheetState || "default";
+    setSheetState(state);
+    if (pointerId !== null) {
+      try { grip.releasePointerCapture(pointerId); } catch (e) { /* abaikan */ }
+    }
+    pointerId = null;
+  };
+
+  const startDrag = (event) => {
+    dragging = true;
+    moved = false;
+    pointerId = event.pointerId;
+    dragStartY = event.clientY;
+    dragStartHeight = sheet.getBoundingClientRect().height;
+    lastTargetState = sheet.dataset.sheetState || "default";
+    sheet.classList.add("is-dragging");
+    try { grip.setPointerCapture(pointerId); } catch (e) { /* abaikan */ }
+  };
+
+  grip.addEventListener("pointerdown", (event) => {
+    if (body && body.scrollTop > 0) return; // biarkan scroll isi sheet lebih dulu
+    startDrag(event);
+  });
+  grip.addEventListener("pointermove", onMove);
+  grip.addEventListener("pointerup", endDrag);
+  grip.addEventListener("pointercancel", endDrag);
+
+  // Klik murni (tanpa geser) pada grip: siklus full → default → expanded → full
+  grip.addEventListener("click", () => {
+    if (moved) { moved = false; return; } // geser tadi sudah menangani state
+    const order = { full: "default", default: "expanded", expanded: "full" };
+    const cur = sheet.dataset.sheetState || "default";
+    setSheetState(order[cur]);
+  });
+
+  // Saat isi sheet di-scroll ke atas melewati batas, geser sheet ke state berikutnya
+  if (body) {
+    let touchStartY = null;
+    body.addEventListener("touchstart", (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
+    body.addEventListener("touchend", (e) => {
+      if (touchStartY === null) return;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      touchStartY = null;
+      if (dy > 40 && body.scrollTop <= 0) {
+        // geser ke bawah di puncak isi → kecilkan sheet
+        const cur = sheet.dataset.sheetState || "default";
+        if (cur !== "full") setSheetState(cur === "expanded" ? "default" : "full");
+      }
+    }, { passive: true });
+  }
+
+  // Selaraskan offset saat ukuran layar berubah (responsif)
+  window.addEventListener("resize", updateSheetOffsetVar);
 }
 
 function initHomeMapControls() {
@@ -1090,17 +1113,20 @@ function initHomeMapControls() {
     homeRecenter();
   });
 
-  // Halte terdekat → cukup recenter ke halte terdekat (tanpa popup)
+  // Halte terdekat → recenter ke halte terdekat (marker disorot + berdenyut)
   const nearest = document.getElementById("home-nearest-stop");
   if (nearest) nearest.addEventListener("click", () => {
     const stop = nearestStop();
-    showHomeStop(stop.id, { pan: true });
+    showHomeStop(stop.id, { pan: true, flash: true });
+    showHomeToast(`Dipusatkan ke ${stop.name} · ${formatDistance(stop.distance)} · ${stop.corridor}`);
   });
 
-  // Bus terdekat → recenter ke bus terdekat di peta
+  // Bus terdekat → recenter ke bus terdekat di peta (marker disorot + berdenyut)
   const busBtn = document.getElementById("home-bus-detail");
   if (busBtn) busBtn.addEventListener("click", () => {
-    recenterToBus(nearestBus().id);
+    const bus = nearestBus();
+    recenterToBus(bus.id);
+    showHomeToast(`Dipusatkan ke ${bus.id} · ${etaText(bus, DATA_STATES[appState.dataState].etaMode)} · ${CROWD_LABEL[bus.crowd]}`);
   });
 
   // Bus di daftar diklik → buka detail bus (overlay), bukan recenter peta
@@ -1136,19 +1162,33 @@ function initHomeMapControls() {
  * Init
  * ------------------------------------------------------------------------ */
 
+/* Perbarui elemen chrome Beranda yang bergantung pada state (badge trip, banner). */
+function updateHomeChrome() {
+  const tripBtn = document.getElementById("home-trip-btn");
+  const badge = document.getElementById("home-trip-badge");
+  const banner = document.getElementById("trip-tracking-banner");
+  const t = appState.activeTrip;
+  const active = t.exists && t.status !== "arrived";
+  if (tripBtn) tripBtn.hidden = !active;
+  if (badge) badge.hidden = !active;
+  applyTripTrackingUI();
+  if (banner) banner.hidden = !active || appState.screen !== "home";
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initDemoControls();
   initFavorite();
   renderStopBuses();
   initNavigation();
-  initRoutePanel();
+  initRouteSheet();
   initRouteSearchLegacy();
   initToggles();
   initTripProgress();
   initTripEvents();
   renderTripScreen();
   applyState("live");
-  showTab("home");
+  showScreen("home");
   initHomeMap();
   initHomeMapControls();
+  initHomeSheet();
 });

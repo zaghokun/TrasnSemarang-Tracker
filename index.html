@@ -156,8 +156,34 @@
               </button>
             </div>
 
-            <!-- Bottom sheet -->
-            <section class="home-sheet" aria-label="Informasi halte terdekat">
+            <!-- Kontrol atas peta: trip aktif + jelajah + profil (pengganti bottom nav) -->
+            <div class="home-top-controls">
+              <button class="icon-btn map-control-btn home-top-controls__trip" type="button" id="home-trip-btn" hidden
+                aria-label="Lihat perjalanan aktif">
+                <svg class="icon" aria-hidden="true"><use href="#i-trip" /></svg>
+                <span class="home-trip-badge" id="home-trip-badge" aria-hidden="true"></span>
+              </button>
+              <button class="icon-btn map-control-btn" type="button" id="home-explore-btn"
+                aria-label="Jelajah Kota Lama">
+                <svg class="icon" aria-hidden="true"><use href="#i-compass" /></svg>
+              </button>
+              <button class="icon-btn map-control-btn" type="button" id="home-profile-btn"
+                aria-label="Profil dan pengaturan">
+                <svg class="icon" aria-hidden="true"><use href="#i-user" /></svg>
+              </button>
+            </div>
+
+            <!-- Toast singkat aksi peta (recenter ke bus terdekat, dll.) -->
+            <div class="map-toast home-toast" id="home-toast" role="status" aria-live="polite"></div>
+
+            <!-- Bottom sheet (dapat digeser: peta penuh ↔ ringkas ↔ daftar) -->
+            <section class="home-sheet" id="home-sheet" data-sheet-state="default" aria-label="Informasi halte terdekat">
+              <!-- Grip: geser untuk membuka peta / memperluas daftar -->
+              <button class="home-sheet__grip" id="home-sheet-grip" type="button"
+                aria-label="Geser panel: buka peta penuh atau perluas daftar"
+                aria-expanded="false">
+                <i aria-hidden="true"></i>
+              </button>
               <!-- Isi panel (judul + isi dirender oleh script.js sesuai halte terpilih) -->
               <div class="home-sheet__body" id="home-sheet-body">
                 <!-- Offline / weak-signal banner (disembunyikan default) -->
@@ -197,6 +223,29 @@
               </div>
             </section>
 
+            <!-- Banner mode pelacakan trip (muncul saat trip aktif dilihat di peta) -->
+            <button class="trip-tracking-banner" id="trip-tracking-banner" type="button" data-go="trip" hidden>
+              <svg class="icon" aria-hidden="true"><use href="#i-trip" /></svg>
+              <span id="trip-tracking-text">Turun 2 halte lagi</span>
+            </button>
+
+            <!-- ===== Mode Cari Rute: bottom sheet di atas peta yang sama ===== -->
+            <section class="route-sheet" id="route-sheet" data-sheet-state="hidden"
+              aria-label="Cari rute perjalanan" aria-hidden="true">
+              <button class="home-sheet__grip" id="route-sheet-grip" type="button"
+                aria-label="Tutup pencarian rute">
+                <i aria-hidden="true"></i>
+              </button>
+              <header class="route-sheet__head">
+                <button class="back-btn" id="route-sheet-back" type="button" aria-label="Tutup pencarian rute">‹</button>
+                <span class="route-sheet__title">Cari rute</span>
+                <span class="route-sheet__spacer"></span>
+              </header>
+              <div class="route-sheet__body" id="route-sheet-body">
+                <!-- Diisi script.js: input tujuan, filter koridor, opsi rute A/B/C -->
+              </div>
+            </section>
+
             <!-- ===== Overlay slide-up: detail halte / detail bus ===== -->
             <div class="info-overlay" id="info-overlay" hidden>
               <button class="info-overlay__scrim" type="button" data-close-overlay aria-label="Tutup"></button>
@@ -206,89 +255,6 @@
                   <!-- Diisi script.js -->
                 </div>
               </section>
-            </div>
-          </section>
-        </main>
-
-        <!-- ===================== Tab RUTE: map + panel gabungan ===================== -->
-        <main class="route-screen screen-view" id="route-screen" data-screen="route" hidden>
-          <!-- Peta simulasi full -->
-          <div class="route-canvas" id="route-canvas">
-            <div class="map-grid-lines" aria-hidden="true"></div>
-            <span class="map-road map-road--live-1" aria-hidden="true"></span>
-            <span class="map-road map-road--live-2" aria-hidden="true"></span>
-            <span class="map-road map-road--live-3" aria-hidden="true"></span>
-            <svg class="route-line route-line--blue" viewBox="0 0 360 430" preserveAspectRatio="none" aria-hidden="true"><path d="M20 340 C84 300 56 220 126 200 S185 110 340 70" /></svg>
-            <svg class="route-line route-line--dark" viewBox="0 0 360 430" preserveAspectRatio="none" aria-hidden="true"><path d="M25 70 C105 110 88 170 172 200 S250 340 342 360" /></svg>
-            <div id="route-stop-layer"></div>
-            <div id="route-bus-layer"></div>
-            <span class="user-location" aria-label="Lokasi Anda" role="img"><i></i></span>
-
-          <!-- Banner mode pelacakan trip (muncul saat trip aktif dilihat di peta) -->
-          <button class="trip-tracking-banner" id="trip-tracking-banner" type="button" data-tab="trip" hidden>
-            <svg class="icon" aria-hidden="true"><use href="#i-trip" /></svg>
-            <span id="trip-tracking-text">Turun 2 halte lagi</span>
-          </button>
-
-          <!-- Floating controls atas -->
-          <div class="route-top-controls">
-              <div class="route-search-row">
-                <button class="search-bar search-bar--floating" type="button" id="route-search-bar" aria-label="Cari tujuan">
-                  <svg class="icon" aria-hidden="true"><use href="#i-search" /></svg>
-                  <span class="search-bar__text">Mau ke mana? Cari tujuan…</span>
-                </button>
-                <button class="icon-btn" type="button" data-go="alerts" aria-label="Notifikasi dan info layanan">
-                  <svg class="icon" aria-hidden="true"><use href="#i-bell" /></svg>
-                </button>
-              </div>
-              <div class="freshness freshness--floating" id="route-freshness">
-                <span class="freshness__dot" aria-hidden="true"></span>
-                <span class="freshness__text">Live · diperbarui 20 detik lalu</span>
-              </div>
-              <div class="map-filter-row" role="group" aria-label="Filter koridor">
-                <button class="map-filter is-active" type="button" data-map-route="all">Semua</button>
-                <button class="map-filter" type="button" data-map-route="corridor-1">Koridor 1</button>
-                <button class="map-filter" type="button" data-map-route="corridor-2">Koridor 2</button>
-                <button class="map-filter" type="button" data-map-route="feeder">Feeder</button>
-              </div>
-            </div>
-
-            <!-- Kontrol sisi peta -->
-            <div class="route-side-controls">
-              <button class="icon-btn map-control-btn" type="button" id="route-recenter" aria-label="Pusatkan ke lokasi saya">
-                <svg class="icon" aria-hidden="true"><use href="#i-location" /></svg>
-              </button>
-              <button class="icon-btn map-control-btn" type="button" id="route-legend-toggle" aria-label="Tampilkan legenda">
-                <svg class="icon" aria-hidden="true"><use href="#i-compass" /></svg>
-              </button>
-            </div>
-
-            <div class="map-live-legend route-legend-pop" id="route-legend" hidden>
-              <span><i class="legend-line legend-line--blue"></i>Koridor 1</span>
-              <span><i class="legend-line legend-line--dark"></i>Koridor 2</span>
-              <span><i class="legend-dot legend-dot--user"></i>Anda</span>
-              <span><i class="legend-dot legend-dot--stop"></i>Halte</span>
-            </div>
-
-            <div class="map-toast route-toast" id="route-toast" aria-live="polite">Pilih bus atau halte di peta</div>
-
-            <button class="explore-other-btn" id="explore-other-routes" type="button" hidden>Jelajahi rute lain</button>
-          </div>
-
-          <!-- Panel bawah: Ringkas / Daftar -->
-          <section class="route-panel" id="route-panel" aria-label="Panel rute">
-            <button class="panel-handle" id="panel-handle" type="button" aria-expanded="false">
-              <i aria-hidden="true"></i><span>Daftar</span>
-            </button>
-            <div class="panel-tabs" role="tablist" aria-label="Isi panel">
-              <button class="panel-tab is-active" role="tab" type="button" data-panel-tab="rute" aria-selected="true">Rute</button>
-              <button class="panel-tab" role="tab" type="button" data-panel-tab="halte" aria-selected="false">Halte</button>
-              <button class="panel-tab" role="tab" type="button" data-panel-tab="bus" aria-selected="false">Bus</button>
-            </div>
-            <div class="panel-body">
-              <div id="panel-rute" role="tabpanel"></div>
-              <div id="panel-halte" role="tabpanel" hidden></div>
-              <div id="panel-bus" role="tabpanel" hidden></div>
             </div>
           </section>
         </main>
@@ -309,14 +275,6 @@
           <div class="info-row"><span><strong>3</strong><small>bus mendatang</small></span><span><strong>120 m</strong><small>jarak berjalan</small></span><span><strong>Ya</strong><small>akses tersedia*</small></span></div>
           <section class="section"><div class="section__head"><h2 class="section__title">Bus berikutnya</h2><span class="status-label">● live</span></div><ul class="detail-bus-list" id="stop-buses"></ul></section>
           <p class="disclaimer">*Informasi aksesibilitas adalah skenario konsep dan perlu validasi infrastruktur.</p>
-        </main>
-
-        <main class="content screen-view screen-view--secondary" id="bus-screen" data-screen="bus" hidden>
-          <div class="screen-topbar"><button class="back-btn" data-go="home" aria-label="Kembali">‹</button><span>Bus detail</span><button class="icon-btn icon-btn--small" aria-label="Bagikan">Bagikan</button></div>
-          <section class="bus-detail-hero"><span class="bus-card__badge"><svg class="icon"><use href="#i-bus" /></svg></span><p class="eyebrow">Bus yang dipilih</p><h1 class="screen-title">TS-101</h1><p class="muted">Koridor 1 → Kota Lama</p><span class="crowd-badge crowd-badge--low">Sepi</span><button class="btn btn--light btn--full" data-go="map">Lihat posisi di peta</button></section>
-          <div class="freshness freshness--inline"><span class="freshness__dot"></span>Live · diperbarui 20 detik lalu</div>
-          <section class="card progress-card"><div class="section__head"><h2 class="card-title">Perjalanan bus</h2><strong>3–5 mnt</strong></div><div class="route-progress"><span class="route-progress__line"></span><span class="route-stop is-done">Simpang Lima</span><span class="route-stop is-next">Pahlawan</span><span class="route-stop">Kota Lama</span></div></section>
-          <section class="section"><h2 class="section__title">Halte berikutnya</h2><div class="next-stop-card"><span class="next-stop-card__number">01</span><div><strong>Halte Pahlawan</strong><p class="muted">sekitar 2–4 menit lagi</p></div><svg class="icon"><use href="#i-chevron" /></svg></div></section>
         </main>
 
         <main class="content screen-view screen-view--secondary" id="trip-screen" data-screen="trip" hidden>
@@ -355,29 +313,6 @@
           <div class="accessibility-note"><strong>Informasi penting</strong><p>Kepadatan bus selalu ditampilkan dengan ikon, label, dan warna. Informasi akses halte adalah data konsep yang perlu divalidasi.</p></div>
         </main>
 
-        <!-- Bottom navigation -->
-        <nav class="bottom-nav" aria-label="Navigasi utama">
-          <button class="nav-item is-active" type="button" aria-current="page" data-tab="home">
-            <svg class="icon" aria-hidden="true"><use href="#i-home" /></svg>
-            <span>Beranda</span>
-          </button>
-          <button class="nav-item" type="button" data-tab="route">
-            <svg class="icon" aria-hidden="true"><use href="#i-route" /></svg>
-            <span>Rute</span>
-          </button>
-          <button class="nav-item" type="button" data-tab="trip">
-            <svg class="icon" aria-hidden="true"><use href="#i-trip" /></svg>
-            <span>Trip</span>
-          </button>
-          <button class="nav-item" type="button" data-tab="explore">
-            <svg class="icon" aria-hidden="true"><use href="#i-compass" /></svg>
-            <span>Jelajah</span>
-          </button>
-          <button class="nav-item" type="button" data-tab="profile">
-            <svg class="icon" aria-hidden="true"><use href="#i-user" /></svg>
-            <span>Profil</span>
-          </button>
-        </nav>
       </div>
     </div>
   </div>
