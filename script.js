@@ -10,18 +10,53 @@
  * ------------------------------------------------------------------------ */
 
 const BUSES = [
-  { id: "TS-101", corridor: "Koridor 1", corridorKey: "corridor-1", destination: "Kota Lama", eta: { min: 3, max: 5 }, crowd: "low", note: "Pilihan nyaman", position: "Mendekati Pahlawan" },
-  { id: "TS-104", corridor: "Koridor 1", corridorKey: "corridor-1", destination: "Kota Lama", eta: { min: 1, max: 3 }, crowd: "high", note: "Tiba lebih cepat", position: "Sekitar Kota Lama" },
-  { id: "TS-109", corridor: "Koridor 1", corridorKey: "corridor-1", destination: "Kota Lama", eta: { min: 8, max: 11 }, crowd: "med", note: "Alternatif", position: "Mendekati Simpang Lima" },
-  { id: "TS-204", corridor: "Koridor 2", corridorKey: "corridor-2", destination: "Tembalang", eta: { min: 5, max: 8 }, crowd: "med", note: "Arah Tembalang", position: "Mendekati Simpang Lima" },
+  { id: "TS-101", corridor: "Koridor 1", corridorKey: "corridor-1", destination: "Kota Lama", eta: { min: 3, max: 5 }, crowd: "low", note: "Pilihan nyaman", onboard: 14, capacity: 40, boarded: 6, alighted: 2, position: "Mendekati Pahlawan", latlng: [-6.9862, 110.4148] },
+  { id: "TS-104", corridor: "Koridor 1", corridorKey: "corridor-1", destination: "Kota Lama", eta: { min: 1, max: 3 }, crowd: "high", note: "Tiba lebih cepat", onboard: 36, capacity: 40, boarded: 11, alighted: 1, position: "Sekitar Kota Lama", latlng: [-6.9702, 110.4262] },
+  { id: "TS-109", corridor: "Koridor 1", corridorKey: "corridor-1", destination: "Kota Lama", eta: { min: 8, max: 11 }, crowd: "med", note: "Alternatif", onboard: 23, capacity: 40, boarded: 8, alighted: 4, position: "Mendekati Simpang Lima", latlng: [-6.9922, 110.4215] },
+  { id: "TS-204", corridor: "Koridor 2", corridorKey: "corridor-2", destination: "Tembalang", eta: { min: 5, max: 8 }, crowd: "med", note: "Arah Tembalang", onboard: 21, capacity: 40, boarded: 5, alighted: 3, position: "Mendekati Simpang Lima", latlng: [-7.0200, 110.4300] },
 ];
 
+// Daftar halte — kurasi halte nyata Trans Semarang (Koridor 1 & 2) sebagai
+// REFERENSI peta. Koordinat adalah pendekatan (≈) untuk demo, bukan data
+// operasional resmi. `distance` adalah simulasi jarak dari lokasi pengguna (m).
 const STOPS = [
-  { id: "stop-simpanglima", name: "Halte Simpang Lima", distance: 120, corridor: "Koridor 1", accessible: true },
-  { id: "stop-pahlawan", name: "Halte Pahlawan", distance: 480, corridor: "Koridor 1", accessible: true },
-  { id: "stop-kotalama", name: "Halte Kota Lama", distance: 2100, corridor: "Koridor 1", accessible: true },
-  { id: "stop-tembalang", name: "Halte Tembalang", distance: 5400, corridor: "Koridor 2", accessible: false },
+  // --- Koridor 1: Mangkang → Penggaron (via pusat kota) ---
+  { id: "stop-mangkang", name: "Halte Mangkang", distance: 6800, corridor: "Koridor 1", accessible: true, latlng: [-6.9686, 110.3186] },
+  { id: "stop-jerakah", name: "Halte Jerakah", distance: 5200, corridor: "Koridor 1", accessible: true, latlng: [-6.9731, 110.3392] },
+  { id: "stop-krapyak", name: "Halte Krapyak", distance: 4300, corridor: "Koridor 1", accessible: true, latlng: [-6.9801, 110.3663] },
+  { id: "stop-kalinjamu", name: "Halte Kalibanteng", distance: 3600, corridor: "Koridor 1", accessible: true, latlng: [-6.9847, 110.3808] },
+  { id: "stop-pahlawan", name: "Halte Pahlawan", distance: 480, corridor: "Koridor 1", accessible: true, latlng: [-6.9845, 110.4090] },
+  { id: "stop-madukoro", name: "Halte Madukoro", distance: 900, corridor: "Koridor 1", accessible: true, latlng: [-6.9819, 110.4028] },
+  { id: "stop-simpanglima", name: "Halte Simpang Lima", distance: 120, corridor: "Koridor 1", accessible: true, latlng: [-6.9904, 110.4229] },
+  { id: "stop-pandanaran", name: "Halte Pandanaran", distance: 350, corridor: "Koridor 1", accessible: true, latlng: [-6.9887, 110.4172] },
+  { id: "stop-balaikota", name: "Halte Balaikota", distance: 780, corridor: "Koridor 1", accessible: true, latlng: [-6.9825, 110.4160] },
+  { id: "stop-johar", name: "Halte Johar", distance: 1450, corridor: "Koridor 1", accessible: true, latlng: [-6.9765, 110.4196] },
+  { id: "stop-stasiuntawang", name: "Halte Stasiun Tawang", distance: 1850, corridor: "Koridor 1", accessible: true, latlng: [-6.9689, 110.4235] },
+  { id: "stop-kotalama", name: "Halte Kota Lama", distance: 2100, corridor: "Koridor 1", accessible: true, latlng: [-6.9683, 110.4279] },
+  { id: "stop-mangunharjo", name: "Halte Mangkang Harjo", distance: 2450, corridor: "Koridor 1", accessible: true, latlng: [-6.9726, 110.4369] },
+  { id: "stop-terboyo", name: "Halte Terboyo", distance: 4300, corridor: "Koridor 1", accessible: true, latlng: [-6.9525, 110.4488] },
+  { id: "stop-penggaron", name: "Halte Penggaron", distance: 6100, corridor: "Koridor 1", accessible: true, latlng: [-6.9806, 110.4855] },
+
+  // --- Koridor 2: Terboyo → Tembalang / Sisemut ---
+  { id: "stop-pucanggading", name: "Halte Pucang Gading", distance: 4600, corridor: "Koridor 2", accessible: true, latlng: [-6.9760, 110.4645] },
+  { id: "stop-pedurungan", name: "Halte Pedurungan", distance: 3900, corridor: "Koridor 2", accessible: true, latlng: [-6.9885, 110.4605] },
+  { id: "stop-majapahit", name: "Halte Majapahit", distance: 2600, corridor: "Koridor 2", accessible: true, latlng: [-6.9930, 110.4470] },
+  { id: "stop-undip", name: "Halte Undip", distance: 3200, corridor: "Koridor 2", accessible: true, latlng: [-7.0489, 110.4382] },
+  { id: "stop-tembalang", name: "Halte Tembalang", distance: 5400, corridor: "Koridor 2", accessible: false, latlng: [-7.0560, 110.4380] },
+  { id: "stop-banjarnegara", name: "Halte Sisemut", distance: 6300, corridor: "Koridor 2", accessible: false, latlng: [-7.0678, 110.4304] },
 ];
+
+// Titik pusat peta Beranda (sekitar koridor Simpang Lima → Kota Lama)
+const HOME_MAP_CENTER = [-6.9780, 110.4170];
+const HOME_MAP_ZOOM = 14;
+
+// Tinggi area peta yang tertutup bottom sheet (px di viewport ponsel).
+// Dipakai untuk menggeser peta agar marker berada di area yang terlihat.
+function homeMapSheetOffset() {
+  const canvas = document.getElementById("home-map-leaflet");
+  if (!canvas) return 0;
+  return Math.round(canvas.clientHeight * 0.26); // dorong koridor ke area peta yang terlihat
+}
 
 const CORRIDORS = [
   { key: "corridor-1", label: "Koridor 1", description: "Simpang Lima → Kota Lama", buses: 3 },
@@ -38,11 +73,11 @@ const ROUTE_OPTIONS = [
 const CROWD_LABEL = { low: "Sepi", med: "Sedang", high: "Padat" };
 
 const DATA_STATES = {
-  live: { chipClass: "", chipText: "Live · diperbarui 20 detik lalu", note: "Live · data diperbarui 20 detik lalu (simulasi).", offline: false, etaMode: "range", mapCaption: "3 bus aktif di sekitar Anda (simulasi)", busesVisible: true },
-  recent: { chipClass: "freshness--stale", chipText: "Diperbarui 3 menit lalu", note: "Recent · data diperbarui 3 menit lalu; akurasi bisa menurun.", offline: false, etaMode: "rangeWide", mapCaption: "Data posisi mungkin tertinggal beberapa menit", busesVisible: true },
-  schedule: { chipClass: "freshness--schedule", chipText: "Estimasi jadwal · data live tidak tersedia", note: "Schedule · ETA diturunkan dari jadwal, bukan posisi bus langsung.", offline: false, etaMode: "schedule", mapCaption: "Menampilkan estimasi berdasarkan jadwal", busesVisible: true },
-  unavailable: { chipClass: "freshness--off", chipText: "Data live sementara tidak tersedia", note: "Unavailable · posisi bus tidak diketahui; tampilkan jadwal berikutnya.", offline: false, etaMode: "unavailable", mapCaption: "Posisi bus belum tersedia", busesVisible: false },
-  weak: { chipClass: "freshness--off", chipText: "Koneksi lemah · data 2 menit lalu", note: "Koneksi lemah · menampilkan data tersimpan; live tracking dijeda.", offline: true, etaMode: "stale", mapCaption: "Live tracking dijeda — menampilkan data tersimpan", busesVisible: true },
+  live: { chipClass: "", chipText: "Live · diperbarui 20 detik lalu", chipShort: "Live", note: "Live · data diperbarui 20 detik lalu (simulasi).", offline: false, etaMode: "range", mapCaption: "3 bus aktif di sekitar Anda (simulasi)", busesVisible: true },
+  recent: { chipClass: "freshness--stale", chipText: "Diperbarui 3 menit lalu", chipShort: "3 mnt lalu", note: "Recent · data diperbarui 3 menit lalu; akurasi bisa menurun.", offline: false, etaMode: "rangeWide", mapCaption: "Data posisi mungkin tertinggal beberapa menit", busesVisible: true },
+  schedule: { chipClass: "freshness--schedule", chipText: "Estimasi jadwal · data live tidak tersedia", chipShort: "Jadwal", note: "Schedule · ETA diturunkan dari jadwal, bukan posisi bus langsung.", offline: false, etaMode: "schedule", mapCaption: "Menampilkan estimasi berdasarkan jadwal", busesVisible: true },
+  unavailable: { chipClass: "freshness--off", chipText: "Data live sementara tidak tersedia", chipShort: "Tidak tersedia", note: "Unavailable · posisi bus tidak diketahui; tampilkan jadwal berikutnya.", offline: false, etaMode: "unavailable", mapCaption: "Posisi bus belum tersedia", busesVisible: false },
+  weak: { chipClass: "freshness--off", chipText: "Koneksi lemah · data 2 menit lalu", chipShort: "Koneksi lemah", note: "Koneksi lemah · menampilkan data tersimpan; live tracking dijeda.", offline: true, etaMode: "stale", mapCaption: "Live tracking dijeda — menampilkan data tersimpan", busesVisible: true },
 };
 
 /* --------------------------------------------------------------------------
@@ -57,6 +92,7 @@ const appState = {
   routeMode: { view: "default", corridorFilter: "all", followBusId: null, legendOpen: false, destination: null },
   activeTrip: { exists: false, status: "empty", routeId: null, busId: null, stopsRemaining: null },
   dataState: "live",
+  homeStopId: "stop-simpanglima",  // halte yang sedang ditampilkan di bottom sheet Beranda
   preferences: { reducedMotion: false },
 };
 
@@ -130,7 +166,7 @@ function etaSubtext(mode) {
 }
 
 function crowdBadgeHTML(crowd) {
-  return `<span class="crowd-badge crowd-badge--${crowd}"><span class="crowd-badge__bars" aria-hidden="true"><i></i><i></i><i></i></span>${CROWD_LABEL[crowd]}</span>`;
+  return `<span class="crowd-badge crowd-badge--${crowd}">${CROWD_LABEL[crowd]}</span>`;
 }
 
 /* --------------------------------------------------------------------------
@@ -141,35 +177,143 @@ function renderBuses(state) {
   const list = document.getElementById("bus-list");
   if (!list) return;
   const mode = DATA_STATES[state].etaMode;
-  list.innerHTML = "";
-  BUSES.slice(0, 3).forEach((bus) => {
-    const li = document.createElement("li");
-    const sub = etaSubtext(mode);
-    li.innerHTML = `
-      <button class="bus-card" type="button" data-go="bus"
-        aria-label="Bus ${bus.id}, ${bus.corridor} arah ${bus.destination}, tiba ${etaText(bus, mode)}, kepadatan ${CROWD_LABEL[bus.crowd]}">
-        <span class="bus-card__badge" aria-hidden="true"><svg class="icon"><use href="#i-bus" /></svg></span>
-        <span>
-          <span class="bus-card__id">${bus.id} · ${bus.corridor}</span>
-          <span class="bus-card__meta">Arah ${bus.destination} · ${bus.note}</span>
-        </span>
-        <span class="bus-card__right">
-          <span class="eta-chip"><svg class="icon" aria-hidden="true"><use href="#i-clock" /></svg>${etaText(bus, mode)}</span>
-          ${crowdBadgeHTML(bus.crowd)}
-          ${sub ? `<span class="bus-card__meta">${sub}</span>` : ""}
-        </span>
-      </button>`;
-    list.appendChild(li);
-  });
-
-  const existingHint = document.querySelector(".bus-hint");
-  if (existingHint) existingHint.remove();
-  if (mode === "range") {
-    const hint = document.createElement("p");
-    hint.className = "bus-hint";
-    hint.innerHTML = "<strong>Rekomendasi:</strong> TS-101 tiba 3–5 menit dengan kabin sepi — menunggu 2 menit lebih lama untuk perjalanan yang lebih nyaman.";
-    list.after(hint);
+  const buses = DATA_STATES[state].busesVisible ? BUSES : [];
+  if (!buses.length) {
+    list.innerHTML = `<li class="bus-empty">Tidak ada bus yang terdeteksi saat ini.</li>`;
+    return;
   }
+  list.innerHTML = buses.slice(0, 4).map((bus) => {
+    const sub = etaSubtext(mode);
+    const pct = Math.round((bus.onboard / bus.capacity) * 100);
+    return `
+    <li class="bus-timeline__item">
+      <button class="bus-row" type="button" data-home-bus="${bus.id}"
+        aria-label="Bus ${bus.id}, tiba ${etaText(bus, mode)}, ${bus.onboard} dari ${bus.capacity} penumpang, kepadatan ${CROWD_LABEL[bus.crowd]}">
+        <span class="bus-row__tile" aria-hidden="true">
+          <svg class="icon"><use href="#i-bus" /></svg>
+        </span>
+        <span class="bus-row__info">
+          <strong><span class="bus-row__dot bus-row__dot--${bus.crowd}" aria-hidden="true"></span>${bus.id}</strong>
+          <span class="bus-row__capacity">
+            <span class="bus-row__capacity-label"><span>Penumpang</span><b>${bus.onboard}/${bus.capacity}</b></span>
+            <span class="bus-row__capacity-bar bus-row__capacity-bar--${bus.crowd}" role="img" aria-label="Keterisian ${pct} persen"><i style="width:${pct}%"></i></span>
+          </span>
+        </span>
+        <span class="bus-row__meta">
+          <span class="bus-row__eta"><svg class="icon" aria-hidden="true"><use href="#i-clock" /></svg>${etaText(bus, mode)}</span>
+          ${sub ? `<span class="bus-row__sub">${sub}</span>` : ""}
+        </span>
+        <svg class="icon bus-row__chev" aria-hidden="true"><use href="#i-chevron" /></svg>
+      </button>
+    </li>`;
+  }).join("");
+}
+
+/* Petakan label koridor halte ("Koridor 1") ke key bus ("corridor-1"). */
+function stopCorridorKey(stop) {
+  const c = CORRIDORS.find((x) => x.label === stop.corridor);
+  return c ? c.key : null;
+}
+
+/* Halte terdekat dari lokasi pengguna (simulasi: jarak terendah). */
+function nearestStop() {
+  return [...STOPS].sort((a, b) => a.distance - b.distance)[0];
+}
+
+function formatDistance(m) {
+  return m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${m} m`;
+}
+
+/* --------------------------------------------------------------------------
+ * Overlay slide-up: detail halte / detail bus (Beranda)
+ * ------------------------------------------------------------------------ */
+
+function openInfoOverlay(mode, id) {
+  const overlay = document.getElementById("info-overlay");
+  const body = document.getElementById("info-overlay-body");
+  if (!overlay || !body) return;
+
+  if (mode === "stop") {
+    const stop = STOPS.find((s) => s.id === id) || nearestStop();
+    body.innerHTML = stopDetailHTML(stop);
+  } else {
+    const bus = BUSES.find((b) => b.id === id) || BUSES[0];
+    body.innerHTML = busDetailHTML(bus);
+  }
+
+  overlay.hidden = false;
+  const close = overlay.querySelector("[data-close-overlay]");
+  if (close) close.focus();
+}
+
+function closeInfoOverlay() {
+  const overlay = document.getElementById("info-overlay");
+  if (overlay) overlay.hidden = true;
+}
+
+function stopDetailHTML(stop) {
+  const key = stopCorridorKey(stop);
+  const buses = BUSES.filter((b) => b.corridorKey === key);
+  const mode = DATA_STATES[appState.dataState].etaMode;
+  return `
+    <div class="info-detail">
+      <div class="info-detail__head">
+        <span class="info-detail__badge" aria-hidden="true"><svg class="icon"><use href="#i-location" /></svg></span>
+        <div>
+          <p class="info-detail__eyebrow">Halte terdekat</p>
+          <h2 class="info-detail__title" id="info-overlay-title">${stop.name}</h2>
+          <p class="info-detail__meta">${stop.corridor} · ${stop.accessible ? "akses tersedia" : "akses terbatas"}</p>
+        </div>
+      </div>
+      <div class="info-detail__stats">
+        <span class="info-detail__stat"><strong>${formatDistance(stop.distance)}</strong><small>jarak berjalan</small></span>
+        <span class="info-detail__stat"><strong>${buses.length}</strong><small>bus terdeteksi</small></span>
+        <span class="info-detail__stat"><strong>${stop.accessible ? "Ya" : "Tidak"}</strong><small>akses</small></span>
+      </div>
+      <section class="info-detail__section">
+        <h3 class="section__title">Bus berikutnya</h3>
+        <div class="info-detail__bus-list">
+          ${buses.length ? buses.map((bus) => `
+            <button class="info-detail__row" type="button" data-home-bus="${bus.id}">
+              <span class="bus-row__tile" aria-hidden="true"><svg class="icon"><use href="#i-bus" /></svg></span>
+              <div><strong>${bus.id}</strong><small>Arah ${bus.destination}</small></div>
+              <span class="info-detail__spacer"></span>
+              <span class="eta-chip"><svg class="icon" aria-hidden="true"><use href="#i-clock" /></svg>${etaText(bus, mode)}</span>
+            </button>`).join("") : `<p class="muted">Belum ada bus terdeteksi.</p>`}
+        </div>
+      </section>
+    </div>`;
+}
+
+function busDetailHTML(bus) {
+  const mode = DATA_STATES[appState.dataState].etaMode;
+  const pct = Math.round((bus.onboard / bus.capacity) * 100);
+  return `
+    <div class="info-detail">
+      <div class="info-detail__head">
+        <span class="info-detail__badge" aria-hidden="true"><svg class="icon"><use href="#i-bus" /></svg></span>
+        <div>
+          <p class="info-detail__eyebrow">Bus yang dipantau</p>
+          <h2 class="info-detail__title" id="info-overlay-title">${bus.id}</h2>
+          <p class="info-detail__meta">${bus.corridor} · arah ${bus.destination}</p>
+        </div>
+      </div>
+      <div class="info-detail__stats">
+        <span class="info-detail__stat"><strong>${etaText(bus, mode)}</strong><small>tiba di halte</small></span>
+        <span class="info-detail__stat"><strong>${bus.onboard}/${bus.capacity}</strong><small>penumpang (sensor)</small></span>
+        <span class="info-detail__stat"><strong>${CROWD_LABEL[bus.crowd]}</strong><small>kepadatan</small></span>
+      </div>
+      <section class="info-detail__section">
+        <h3 class="section__title">Status perjalanan</h3>
+        <div class="info-detail__bus-list">
+          <div class="info-detail__row"><div><strong>${bus.position}</strong><small>posisi dari GPS bus</small></div></div>
+          <div class="info-detail__row"><div><strong>+${bus.boarded} naik · −${bus.alighted} turun</strong><small>sensor naik/turun (interval terakhir)</small></div></div>
+          <div class="info-detail__row"><div><strong>Keterisian ${pct}%</strong><small>dari kapasitas ${bus.capacity} kursi</small></div>
+            <span class="info-detail__spacer"></span>${crowdBadgeHTML(bus.crowd)}</div>
+          <div class="info-detail__row"><div><strong>${bus.note}</strong><small>catatan untuk perjalanan ini</small></div></div>
+        </div>
+      </section>
+    </div>`;
 }
 
 function renderStopBuses() {
@@ -268,7 +412,6 @@ function renderPanelRute() {
           <span>${r.transfers} transfer · <b class="crowd-text--${r.crowd}">${CROWD_LABEL[r.crowd]}</b></span>
           <small>${r.via}</small>
         </button>`).join("")}
-      <p class="bus-hint"><strong>Rekomendasi:</strong> Route B 39 menit tanpa transfer dan kabin sepi — paling nyaman bila tidak terburu-buru.</p>
     </div>
     ${routeDetailHTML(appState.selection.routeId)}`;
 }
@@ -350,15 +493,15 @@ function applyState(state) {
   appState.dataState = state;
 
   const chip = document.getElementById("freshness-chip");
-  const chipText = document.getElementById("freshness-text");
   const banner = document.getElementById("offline-banner");
-  const mapCaption = document.getElementById("map-caption");
   const note = document.getElementById("demo-state-desc");
 
-  if (chip) chip.className = `freshness ${cfg.chipClass}`.trim();
-  if (chipText) chipText.textContent = cfg.chipText;
+  if (chip) {
+    chip.className = `freshness freshness--home ${cfg.chipClass}`.trim();
+    const chipLabel = chip.querySelector(".freshness__text");
+    if (chipLabel) chipLabel.textContent = cfg.chipShort;
+  }
   if (banner) banner.hidden = !cfg.offline;
-  if (mapCaption) mapCaption.textContent = cfg.mapCaption;
   if (note) note.textContent = cfg.note;
 
   // Freshness chip di tab Rute
@@ -762,6 +905,234 @@ function initDemoControls() {
 }
 
 /* --------------------------------------------------------------------------
+ * Peta nyata Beranda — Leaflet + OpenStreetMap (gratis, tanpa API key).
+ * Marker halte & bus adalah SIMULASI di atas peta nyata.
+ * ------------------------------------------------------------------------ */
+
+let homeMap = null;
+let homeUserMarker = null;
+let homeBusMarkers = {};
+let homeStopMarkers = {};
+
+const MAP_BUS_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="3.5" width="15" height="13" rx="2.5" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M4.5 10h15" stroke="#fff" stroke-width="1.8"/><circle cx="8" cy="19.2" r="1.6" fill="#fff"/><circle cx="16" cy="19.2" r="1.6" fill="#fff"/></svg>`;
+
+// Jumlah halte terdekat yang labelnya ditampilkan di peta (sisanya disembunyikan
+// agar peta tidak penuh). Halte terpilih selalu ditampilkan.
+const HOME_STOP_VISIBLE = 4;
+
+/* Pilih halte yang ditampilkan di peta: beberapa terdekat + halte terpilih. */
+function visibleHomeStops() {
+  const nearest = [...STOPS].sort((a, b) => a.distance - b.distance);
+  const picked = nearest.slice(0, HOME_STOP_VISIBLE);
+  const selected = STOPS.find((s) => s.id === appState.homeStopId);
+  if (selected && !picked.includes(selected)) picked.push(selected);
+  return picked;
+}
+
+/* Gambar ulang marker halte (dipanggil saat init & saat fokus halte berubah). */
+function renderHomeStopMarkers() {
+  if (!homeMap) return;
+  Object.values(homeStopMarkers).forEach((m) => homeMap.removeLayer(m));
+  homeStopMarkers = {};
+  visibleHomeStops().forEach((stop) => {
+    const icon = L.divIcon({
+      className: "",
+      html: `<span class="map-stop-pin"><svg class="icon map-stop-pin__icon" aria-hidden="true"><use href="#i-bus-stop" /></svg>${stop.name.replace("Halte ", "")}</span>`,
+      iconSize: null,
+      iconAnchor: [0, 0],
+    });
+    homeStopMarkers[stop.id] = L.marker(stop.latlng, { icon })
+      .addTo(homeMap)
+      .on("click", () => {
+        appState.homeStopId = stop.id;
+        renderHomeStopMarkers();
+        openInfoOverlay("stop", stop.id);
+      });
+  });
+}
+
+function initHomeMap() {
+  const el = document.getElementById("home-map-leaflet");
+  if (!el) return;
+  if (homeMap) return;
+
+  const loading = document.getElementById("map-loading");
+  const errorEl = document.getElementById("map-error");
+  if (loading) loading.hidden = false;
+  if (errorEl) errorEl.hidden = true;
+
+  // Leaflet gagal dimuat (CDN offline): tampilkan state kegagalan, bukan peta kosong.
+  if (typeof L === "undefined") {
+    if (loading) loading.hidden = true;
+    if (errorEl) errorEl.hidden = false;
+    return;
+  }
+
+  homeMap = L.map(el, {
+    center: HOME_MAP_CENTER,
+    zoom: HOME_MAP_ZOOM,
+    zoomControl: true,           // kontrol zoom tetap ada (aksesibilitas)
+    zoomControlPosition: "topleft",
+    attributionControl: true,
+  });
+
+  let tileLoaded = false;
+  const tiles = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  });
+  tiles.on("load", () => {
+    tileLoaded = true;
+    if (loading) loading.hidden = true;
+  });
+  tiles.on("tileerror", () => {
+    // Hanya tampilkan error bila tidak ada satupun tile yang berhasil.
+    if (!tileLoaded) {
+      if (loading) loading.hidden = true;
+      if (errorEl) errorEl.hidden = false;
+    }
+  });
+  tiles.addTo(homeMap);
+
+  // Timeout cadangan: bila tile tak kunjung memuat, tampilkan error state.
+  setTimeout(() => {
+    if (!tileLoaded && errorEl && !homeMap._loadedOnce) {
+      if (loading) loading.hidden = true;
+      errorEl.hidden = false;
+    }
+  }, 8000);
+
+  // Marker halte — hanya tampilkan beberapa halte terdekat + halte terpilih
+  // agar peta tetap bersih (label tidak saling tumpang tindih).
+  homeStopMarkers = {};
+
+  // Marker bus (klik → buka detail bus)
+  BUSES.forEach((bus, i) => {
+    const icon = L.divIcon({
+      className: "",
+      html: `<span class="map-bus-dot${i % 2 ? " map-bus-dot--alt" : ""}">${MAP_BUS_ICON}</span>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+    });
+    homeBusMarkers[bus.id] = L.marker(bus.latlng, { icon })
+      .addTo(homeMap)
+      .on("click", () => openInfoOverlay("bus", bus.id));
+  });
+
+  // Titik lokasi pengguna
+  const userIcon = L.divIcon({
+    className: "",
+    html: '<span class="map-user-dot"></span>',
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  });
+  homeUserMarker = L.marker(HOME_MAP_CENTER, { icon: userIcon, interactive: false }).addTo(homeMap);
+
+  // Tampilkan halte terdekat secara default
+  showHomeStop(nearestStop().id, { pan: true });
+
+  // Paksa peta menghitung ukuran ulang setelah layout/animasi tab
+  setTimeout(() => {
+    if (!homeMap) return;
+    homeMap.invalidateSize();
+    homeMap._loadedOnce = true;
+  }, 300);
+}
+
+/* Pusatkan peta ke lokasi pengguna (dengan offset sheet). */
+function homeRecenter() {
+  if (!homeMap) return;
+  homeMap.setView(HOME_MAP_CENTER, HOME_MAP_ZOOM, { animate: false });
+  const offset = homeMapSheetOffset();
+  if (offset > 0) homeMap.panBy([0, offset], { animate: false });
+}
+
+/* Fokus peta ke sebuah halte. */
+function showHomeStop(stopId, opts = {}) {
+  const stop = STOPS.find((s) => s.id === stopId);
+  if (!stop) return;
+  appState.homeStopId = stop.id;
+  if (homeMap) {
+    renderHomeStopMarkers(); // pastikan halte terpilih ikut tampil
+    if (opts.pan) {
+      const offset = homeMapSheetOffset();
+      homeMap.setView(stop.latlng, HOME_MAP_ZOOM, { animate: false });
+      if (offset > 0) homeMap.panBy([0, offset], { animate: false });
+    }
+  }
+}
+
+/* Fokus peta ke sebuah bus (recenter ke posisi bus + sorot markernya). */
+function recenterToBus(busId) {
+  const bus = BUSES.find((b) => b.id === busId);
+  if (!bus || !homeMap) return;
+  const offset = homeMapSheetOffset();
+  homeMap.setView(bus.latlng, HOME_MAP_ZOOM + 1, { animate: true });
+  if (offset > 0) homeMap.panBy([0, offset], { animate: true });
+
+  // Sorot marker bus terpilih, kosongkan lainnya.
+  Object.entries(homeBusMarkers).forEach(([id, marker]) => {
+    const el = marker.getElement();
+    if (!el) return;
+    const dot = el.querySelector(".map-bus-dot");
+    if (dot) dot.classList.toggle("is-selected", id === bus.id);
+  });
+}
+
+/* Bus terdekat (simulasi: ETA terkecil yang terlihat). */
+function nearestBus() {
+  return [...BUSES].sort((a, b) => a.eta.min - b.eta.min)[0];
+}
+
+function initHomeMapControls() {
+  const recenter = document.getElementById("home-recenter");
+  if (recenter) recenter.addEventListener("click", () => {
+    homeRecenter();
+  });
+
+  // Halte terdekat → cukup recenter ke halte terdekat (tanpa popup)
+  const nearest = document.getElementById("home-nearest-stop");
+  if (nearest) nearest.addEventListener("click", () => {
+    const stop = nearestStop();
+    showHomeStop(stop.id, { pan: true });
+  });
+
+  // Bus terdekat → recenter ke bus terdekat di peta
+  const busBtn = document.getElementById("home-bus-detail");
+  if (busBtn) busBtn.addEventListener("click", () => {
+    recenterToBus(nearestBus().id);
+  });
+
+  // Bus di daftar diklik → buka detail bus (overlay), bukan recenter peta
+  const busList = document.getElementById("bus-list");
+  if (busList) busList.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-home-bus]");
+    if (btn) openInfoOverlay("bus", btn.dataset.homeBus);
+  });
+
+  // Tutup overlay (scrim / handle) + tombol Escape
+  const overlay = document.getElementById("info-overlay");
+  if (overlay) {
+    overlay.addEventListener("click", (e) => {
+      if (e.target.closest("[data-close-overlay]")) closeInfoOverlay();
+      const busBtn2 = e.target.closest("[data-home-bus]");
+      if (busBtn2) openInfoOverlay("bus", busBtn2.dataset.homeBus);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !overlay.hidden) closeInfoOverlay();
+    });
+  }
+
+  const retry = document.getElementById("map-retry");
+  if (retry) retry.addEventListener("click", () => {
+    const errorEl = document.getElementById("map-error");
+    if (errorEl) errorEl.hidden = true;
+    homeMap = null;
+    initHomeMap();
+  });
+}
+
+/* --------------------------------------------------------------------------
  * Init
  * ------------------------------------------------------------------------ */
 
@@ -778,4 +1149,6 @@ document.addEventListener("DOMContentLoaded", () => {
   renderTripScreen();
   applyState("live");
   showTab("home");
+  initHomeMap();
+  initHomeMapControls();
 });

@@ -4,42 +4,45 @@
    ========================================================================== */
 
 :root {
-  /* ---- Font ---- */
-  --font-sans: "Nunito", ui-rounded, system-ui, -apple-system, "Segoe UI",
+  /* ---- Font ----
+     Inter: netral, sangat terbaca di layar kecil & luar ruangan, terasa civic/tepercaya.
+     Fallback dipertahankan agar tampilan tetap rapi bila web font gagal dimuat. */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, sans-serif;
 
-  /* ---- Warna brand (dari referensi) ---- */
-  --color-brand: #2c4696;          /* cobalt */
-  --color-brand-deep: #101c3d;     /* navy gelap — teks utama di atas pastel */
-  --color-brand-mid: #3d5aa8;
+  /* ---- Warna brand — tema merah & putih ----
+     Merah sebagai aksen utama (tombol, header, peta), putih sebagai kanvas. */
+  --color-brand: #d9223b;          /* merah utama */
+  --color-brand-deep: #8f0f22;     /* merah tua — teks di atas pastel */
+  --color-brand-mid: #e8566a;      /* merah lebih muda */
 
   /* ---- Surface & background ---- */
-  --color-bg-stage: #e7cfcf;       /* blush pink (di luar frame) */
-  --color-bg-app: #f3ece9;         /* latar dalam aplikasi */
-  --color-surface: #fffdfc;        /* kartu utama */
-  --color-surface-soft: #f8f4f1;
+  --color-bg-stage: #f3dede;       /* blush pucat (di luar frame) */
+  --color-bg-app: #fbfafa;         /* latar dalam aplikasi — nyaris putih */
+  --color-surface: #ffffff;        /* kartu utama */
+  --color-surface-soft: #f6f2f2;
 
-  /* ---- Pastel (HANYA untuk latar badge/kartu; teks selalu navy gelap) ---- */
-  --color-mint: #cdeede;           /* Sepi */
-  --color-amber: #ffe3b3;          /* Sedang */
-  --color-coral: #f4b6c2;          /* Padat — khusus crowding */
-  --color-sky: #dbe4fb;            /* info / live */
-  --color-alert-bg: #fbeee0;       /* service alert (beda dari crowding) */
+  /* ---- Pastel netral (HANYA latar badge/kartu; teks selalu merah tua) ---- */
+  --color-mint: #e6f0ea;           /* Sepi — latar netral */
+  --color-amber: #fdeecf;          /* Sedang */
+  --color-coral: #fbd9de;          /* Padat — khusus crowding */
+  --color-sky: #fbe3e6;            /* info / live */
+  --color-alert-bg: #fdecec;       /* service alert (beda dari crowding) */
 
   /* ---- Teks ---- */
-  --color-text: #101c3d;
-  --color-text-muted: #46517a;     /* > 4.5:1 di atas surface terang */
+  --color-text: #1c1214;
+  --color-text-muted: #6a5457;     /* > 4.5:1 di atas surface terang */
   --color-on-brand: #ffffff;
 
   /* ---- Garis ---- */
-  --color-border: #e6ded9;
-  --color-border-soft: #efe8e3;
+  --color-border: #eee1e2;
+  --color-border-soft: #f4eaea;
 
-  /* ---- Status (ikon/garis pendamping, teks tetap navy) ---- */
+  /* ---- Status (ikon/garis pendamping, teks tetap merah tua) ---- */
   --color-status-low: #177a5c;     /* ikon Sepi */
   --color-status-med: #8a5a00;     /* ikon Sedang */
   --color-status-high: #b02e4c;    /* ikon Padat */
-  --color-status-alert: #8a4a00;   /* ikon alert layanan */
+  --color-status-alert: #c22036;   /* ikon alert layanan */
   --color-status-live: #177a5c;    /* dot live */
 
   /* ---- Radius ---- */
@@ -99,6 +102,9 @@
   --phone-height: 844px;
   --phone-frame: 10px;        /* ketebalan bezel frame */
   --stage-padding: 24px;
+
+  /* ---- Bottom sheet Beranda ---- */
+  --home-sheet-height: 62%;   /* tinggi maksimum sheet peta Beranda */
 }
 
 /* ==========================================================================
@@ -191,7 +197,7 @@ h1, h2, h3, p {
   max-width: calc(100vw - (var(--stage-padding) * 2));
   max-height: calc(100vh - (var(--stage-padding) * 2));
   border-radius: 44px;
-  background: #0d1630;
+  background: #2a0a10;
   padding: var(--phone-frame);
   box-shadow: var(--shadow-float);
 }
@@ -326,6 +332,7 @@ h1, h2, h3, p {
   margin-top: var(--space-2);
   font-size: var(--text-title);
   font-weight: 800;
+  letter-spacing: -0.01em;
   line-height: 1.25;
 }
 
@@ -449,7 +456,7 @@ h1, h2, h3, p {
 .eyebrow {
   font-size: var(--text-meta);
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
@@ -547,67 +554,598 @@ h1, h2, h3, p {
 }
 
 /* ==========================================================================
-   Service alert (berbeda dari crowding: warna latar sendiri + ikon segitiga)
+   BERANDA — peta penuh layar + bottom sheet (inspirasi: HomeReference)
+   Layar Beranda menumpuk peta sebagai latar, tombol bulat mengambang,
+   dan bottom sheet di bawah. Scroll internal ada di isi sheet.
    ========================================================================== */
 
-.alert-banner {
+/* Beranda: peta mengisi seluruh layar, sheet menempel di bawah */
+.content--home {
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+  background: #ffffff;
+}
+
+.home-map {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+}
+
+/* Kanvas peta Leaflet: seluruh layar, latar putih agar bersih saat tile memuat */
+.home-map__canvas {
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  overflow: hidden;
+  z-index: 0;
+}
+
+/* Pastikan peta Leaflet mengisi kanvas & tidak menutupi sheet */
+.home-map__canvas .leaflet-container {
   width: 100%;
+  height: 100%;
+  background: #ffffff;
+  font-family: var(--font-sans);
+}
+
+/* Status pemuatan tile peta */
+.map-loading {
+  position: absolute;
+  inset: 0;
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  background: var(--color-alert-bg);
-  border: 1.5px solid #eed9bd;
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-  margin-bottom: var(--space-4);
-  color: var(--color-text);
-  transition: transform var(--dur-fast) var(--ease-standard);
-}
-
-.alert-banner:active {
-  transform: scale(0.98);
-}
-
-.alert-banner__icon {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: var(--color-status-alert);
+  gap: var(--space-3);
+  background: #ffffff;
+  color: var(--color-text-muted);
+  font-size: var(--text-label);
+  font-weight: 700;
+  z-index: 3;
+}
+
+.map-loading__spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-brand);
+  animation: map-spin 0.8s linear infinite;
+}
+
+@keyframes map-spin { to { transform: rotate(360deg); } }
+
+/* Kegagalan memuat peta */
+.map-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  text-align: center;
+  background: #ffffff;
+  z-index: 3;
+}
+
+.map-error .icon {
+  width: 40px;
+  height: 40px;
+  color: var(--color-brand);
+}
+
+.map-error__title {
+  font-size: var(--text-card);
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.map-error__body {
+  margin-top: var(--space-2);
+  font-size: var(--text-label);
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.map-error__retry {
+  margin-top: var(--space-2);
+  color: var(--color-brand);
+}
+
+/* Marker halte kustom di peta */
+.map-stop-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  background: #ffffff;
+  border: 1.5px solid var(--color-brand);
+  color: var(--color-text);
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 4px 10px rgba(16, 28, 61, 0.18);
+}
+
+.map-stop-pin__icon {
+  width: 11px;
+  height: 11px;
+  color: var(--color-brand);
   flex: none;
 }
 
-.alert-banner__title {
-  display: block;
-  font-size: var(--text-label);
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+/* Ikon lokasi pengguna kustom (Leaflet divIcon) */
+.map-user-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 0 6px rgba(217, 34, 59, 0.2);
 }
 
-.alert-banner__text {
-  display: block;
+/* Ikon bus kustom (Leaflet divIcon) — lebih kecil dari marker halte */
+.map-bus-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 8px rgba(16, 28, 61, 0.26);
+  border: 2px solid #ffffff;
+}
+
+.map-bus-dot svg { width: 11px; height: 11px; }
+.map-bus-dot--alt { background: var(--color-brand-mid); }
+
+/* Bus terpilih (dari daftar) — sorot dengan cincin + skala */
+.map-bus-dot.is-selected {
+  transform: scale(1.18);
+  box-shadow: 0 0 0 6px rgba(217, 34, 59, 0.22), 0 5px 14px rgba(16, 28, 61, 0.28);
+  z-index: 600;
+}
+
+/* ==========================================================================
+   Bottom sheet
+   ========================================================================== */
+
+.home-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  max-height: 62%;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none; /* hanya isi sheet yang menangkap klik */
+}
+
+/* ==========================================================================
+   Kontrol sisi peta Beranda (halte terdekat + pusatkan lokasi)
+   ========================================================================== */
+
+.home-map__controls {
+  position: absolute;
+  right: var(--space-4);
+  bottom: calc(var(--home-sheet-height) + var(--space-4));
+  display: grid;
+  gap: var(--space-2);
+  z-index: 6;
+}
+
+.home-map__controls .map-control-btn {
+  background: var(--color-surface);
+  color: var(--color-brand);
+  box-shadow: var(--shadow-card);
+}
+
+.home-map__controls .map-control-btn[aria-pressed="true"] {
+  background: var(--color-brand);
+  color: #fff;
+}
+
+/* Isi sheet — area scroll, panel putih terpisah (bubble) */
+.home-sheet__body {
+  pointer-events: auto;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  background: #ffffff;
+  border-top-left-radius: var(--radius-xl);
+  border-top-right-radius: var(--radius-xl);
+  padding: var(--space-5) var(--space-4) var(--content-bottom-clearance);
+  box-shadow: 0 -10px 30px rgba(16, 28, 61, 0.1);
+}
+
+.home-sheet__body::-webkit-scrollbar { display: none; }
+
+/* Header sheet — nama aplikasi (kiri) + aksi halte/bus (kanan) */
+.home-sheet__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+}
+
+.home-sheet__brand {
+  font-size: var(--text-title);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--color-brand);
+}
+
+.home-sheet__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* Tombol chip bulat untuk aksi halte/bus di header sheet */
+.chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-size: var(--text-meta);
+  font-weight: 800;
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
+}
+
+.chip-btn .icon { width: var(--icon-sm); height: var(--icon-sm); flex: none; }
+
+.chip-btn:active { transform: scale(0.96); }
+
+.chip-btn--pin {
+  background: var(--color-brand);
+  border-color: var(--color-brand);
+  color: #fff;
+}
+
+/* ==========================================================================
+   Overlay slide-up: detail halte / detail bus
+   ========================================================================== */
+
+.info-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.info-overlay__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(28, 18, 20, 0.4);
+  animation: overlay-fade var(--dur-med) var(--ease-standard);
+}
+
+.info-overlay__panel {
+  position: relative;
+  max-height: 82%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: 0 -12px 34px rgba(16, 28, 61, 0.2);
+  animation: overlay-rise var(--dur-med) var(--ease-standard);
+}
+
+.info-overlay__handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  flex: none;
+}
+
+.info-overlay__handle i {
+  width: 40px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-border);
+}
+
+.info-overlay__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 0 var(--space-5) var(--space-6);
+}
+
+.info-overlay__body::-webkit-scrollbar { display: none; }
+
+@keyframes overlay-rise {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes overlay-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Isi overlay detail */
+.info-detail__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+}
+
+.info-detail__badge {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-brand);
+  color: #fff;
+}
+
+.info-detail__badge .icon { width: var(--icon-lg); height: var(--icon-lg); }
+
+.info-detail__eyebrow {
+  font-size: var(--text-meta);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.info-detail__title {
+  margin-top: 2px;
+  font-size: var(--text-title);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.info-detail__meta {
   margin-top: 2px;
   font-size: var(--text-label);
-  line-height: 1.45;
-  color: var(--color-text);
-}
-
-.alert-banner__text em {
-  font-style: normal;
   color: var(--color-text-muted);
 }
 
-.alert-banner__body {
-  flex: 1;
+.info-detail__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--color-border);
 }
 
-.alert-banner__chev {
-  color: var(--color-text-muted);
+.info-detail__stat { display: grid; gap: 2px; }
+.info-detail__stat strong { font-size: var(--text-card); font-weight: 800; }
+.info-detail__stat small { font-size: var(--text-meta); color: var(--color-text-muted); }
+
+.info-detail__section { margin-top: var(--space-5); }
+.info-detail__section .section__title { font-size: var(--text-card); }
+
+.info-detail__bus-list { display: grid; gap: var(--space-2); margin-top: var(--space-3); }
+
+.info-detail__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-soft);
+}
+
+.info-detail__row strong { font-size: var(--text-body); }
+.info-detail__row small { font-size: var(--text-meta); color: var(--color-text-muted); }
+.info-detail__row .info-detail__spacer { flex: 1; }
+
+/* ---- Penumpang hidup (sensor naik/turun) di kartu bus ---- */
+.bus-row__capacity {
+  display: grid;
+  gap: 4px;
   margin-top: var(--space-2);
+}
+
+.bus-row__capacity-bar {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.bus-row__capacity-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-status-low);
+}
+
+/* Warna bar kepadatan: hijau (Sepi) · kuning (Sedang) · merah (Ramai) */
+.bus-row__capacity-bar--low i { background: var(--color-status-low); }
+.bus-row__capacity-bar--med i { background: #e0a500; }
+.bus-row__capacity-bar--high i { background: var(--color-brand); }
+
+.bus-row__capacity-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-meta);
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.bus-row__capacity-label b {
+  color: var(--color-text);
+  font-weight: 800;
+}
+
+.bus-empty {
+  margin-top: var(--space-4);
+  padding: var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-soft);
+  border: 1px dashed var(--color-border);
+  text-align: center;
+  font-size: var(--text-label);
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+/* Pencarian rute cepat di Beranda */
+.search-bar--home {
+  margin: var(--space-5) 0 0;
+  width: 100%;
+}
+
+.link-btn--accent {
+  color: var(--color-brand);
+  font-weight: 800;
+}
+
+/* ---- Timeline daftar bus ----
+   Bersih & ringkas: kartu bertumpuk tanpa rel/dot dekoratif. */
+.bus-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.bus-timeline__item {
+  position: relative;
+}
+
+.bus-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  box-shadow: none;
+  transition: transform var(--dur-fast) var(--ease-standard),
+    background var(--dur-fast) var(--ease-standard);
+}
+
+.bus-row:active {
+  transform: scale(0.98);
+  background: var(--color-surface-soft);
+}
+
+.bus-row__tile {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-brand);
+  color: #fff;
+}
+
+.bus-row__tile .icon { width: var(--icon-md); height: var(--icon-md); }
+
+.bus-row__info {
+  flex: 1 1 0;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.bus-row__info strong {
+  font-size: var(--text-body);
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bus-row__dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 7px;
+  vertical-align: middle;
+  background: var(--color-status-low);
+}
+
+.bus-row__dot--low { background: var(--color-status-low); }
+.bus-row__dot--med { background: #e0a500; }
+.bus-row__dot--high { background: var(--color-brand); }
+
+.bus-row__info small {
+  font-size: var(--text-meta);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bus-row__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  flex: none;
+}
+
+.bus-row__eta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-label);
+  font-weight: 800;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.bus-row__eta .icon {
+  width: 13px;
+  height: 13px;
+  color: var(--color-text-muted);
+}
+
+.bus-row__sub {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+/* Badge kepadatan lebih ringkas di dalam baris bus */
+.bus-row .crowd-badge {
+  padding: 2px var(--space-2);
+}
+
+.bus-row__chev {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  color: var(--color-text-muted);
+  flex: none;
 }
 
 /* ==========================================================================
@@ -670,6 +1208,7 @@ h1, h2, h3, p {
 .section__title {
   font-size: var(--text-title);
   font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 .section__hint {
@@ -761,7 +1300,6 @@ h1, h2, h3, p {
 .crowd-badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-pill);
   font-size: var(--text-meta);
@@ -770,51 +1308,12 @@ h1, h2, h3, p {
   white-space: nowrap;
 }
 
-.crowd-badge__bars {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 12px;
-}
-
-.crowd-badge__bars i {
-  width: 3px;
-  border-radius: 2px;
-  background: currentColor;
-  opacity: 0.28;
-}
-
-.crowd-badge__bars i:nth-child(1) { height: 5px; }
-.crowd-badge__bars i:nth-child(2) { height: 8px; }
-.crowd-badge__bars i:nth-child(3) { height: 12px; }
-
-.crowd-badge--low { background: var(--color-mint); }
-.crowd-badge--low .crowd-badge__bars { color: var(--color-status-low); }
-.crowd-badge--low .crowd-badge__bars i:nth-child(-n + 1) { opacity: 1; }
-
-.crowd-badge--med { background: var(--color-amber); }
-.crowd-badge--med .crowd-badge__bars { color: var(--color-status-med); }
-.crowd-badge--med .crowd-badge__bars i:nth-child(-n + 2) { opacity: 1; }
-
-.crowd-badge--high { background: var(--color-coral); }
-.crowd-badge--high .crowd-badge__bars { color: var(--color-status-high); }
-.crowd-badge--high .crowd-badge__bars i { opacity: 1; }
+/* Tanpa ikon bar; status dibedakan oleh teks + warna teks (bukan warna saja). */
+.crowd-badge--low { color: var(--color-status-low); }
+.crowd-badge--med { color: #8a5a00; }
+.crowd-badge--high { color: var(--color-status-high); }
 
 /* Rekomendasi keputusan di bawah daftar */
-.bus-hint {
-  margin-top: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--color-mint);
-  font-size: var(--text-label);
-  font-weight: 700;
-  line-height: 1.5;
-  color: var(--color-text);
-}
-
-.bus-hint strong {
-  font-weight: 800;
-}
 
 /* ==========================================================================
    Map card (simulasi)
@@ -829,7 +1328,7 @@ h1, h2, h3, p {
   height: 168px;
   border-radius: var(--radius-md);
   background:
-    linear-gradient(0deg, rgba(44, 70, 150, 0.04), rgba(44, 70, 150, 0.04)),
+    linear-gradient(0deg, rgba(217, 34, 59, 0.04), rgba(217, 34, 59, 0.04)),
     #eef0f6;
   overflow: hidden;
 }
@@ -856,7 +1355,7 @@ h1, h2, h3, p {
   top: 96px;
   left: 44%;
   background: var(--color-brand);
-  box-shadow: 0 0 0 6px rgba(44, 70, 150, 0.18);
+  box-shadow: 0 0 0 6px rgba(217, 34, 59, 0.18);
 }
 
 .map-marker--stop {
@@ -923,7 +1422,7 @@ h1, h2, h3, p {
 .map-filter { min-height: 38px; padding: 0 var(--space-4); border-radius: var(--radius-pill); background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text-muted); font-size: var(--text-label); font-weight: 800; white-space: nowrap; }
 .map-filter.is-active { background: var(--color-brand); color: #fff; border-color: var(--color-brand); }
 .live-map { position: relative; height: 330px; margin-top: var(--space-4); overflow: hidden; border-radius: var(--radius-lg); background: #e9ecf4; box-shadow: var(--shadow-card); }
-.map-grid-lines { position: absolute; inset: 0; opacity: .5; background-image: linear-gradient(90deg, rgba(44,70,150,.07) 1px, transparent 1px), linear-gradient(rgba(44,70,150,.07) 1px, transparent 1px); background-size: 32px 32px; }
+.map-grid-lines { position: absolute; inset: 0; opacity: .5; background-image: linear-gradient(90deg, rgba(217,34,59,.07) 1px, transparent 1px), linear-gradient(rgba(217,34,59,.07) 1px, transparent 1px); background-size: 32px 32px; }
 .map-road--live-1 { width: 150%; height: 18px; top: 105px; left: -25%; transform: rotate(-14deg); }
 .map-road--live-2 { width: 150%; height: 12px; top: 235px; left: -20%; transform: rotate(9deg); }
 .map-road--live-3 { width: 15px; height: 140%; top: -20%; left: 58%; transform: rotate(8deg); }
@@ -935,9 +1434,9 @@ h1, h2, h3, p {
 .map-stop b { padding: 3px 5px; border-radius: 5px; background: rgba(255,255,255,.88); white-space: nowrap; }
 .map-stop--one { top: 66%; left: 18%; }.map-stop--two { top: 44%; left: 51%; }.map-stop--three { top: 17%; left: 86%; }
 .live-bus { position: absolute; z-index: 4; width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--color-brand); color: #fff; box-shadow: 0 5px 14px rgba(16,28,61,.28); transition: transform var(--dur-med) var(--ease-standard), box-shadow var(--dur-med) var(--ease-standard); }
-.live-bus:hover, .live-bus.is-selected { transform: scale(1.16); box-shadow: 0 0 0 6px rgba(44,70,150,.18), 0 5px 14px rgba(16,28,61,.28); }
+.live-bus:hover, .live-bus.is-selected { transform: scale(1.16); box-shadow: 0 0 0 6px rgba(217,34,59,.18), 0 5px 14px rgba(16,28,61,.28); }
 .live-bus .icon { width: 20px; height: 20px; }.live-bus--one { top: 52%; left: 29%; }.live-bus--two { top: 73%; left: 70%; background: var(--color-status-high); }.live-bus--three { top: 26%; left: 67%; background: var(--color-status-med); }
-.user-location { position: absolute; z-index: 3; top: 52%; left: 48%; width: 22px; height: 22px; border-radius: 50%; background: var(--color-brand); box-shadow: 0 0 0 8px rgba(44,70,150,.2); }.user-location i { position: absolute; inset: 7px; border-radius: 50%; background: #fff; }
+.user-location { position: absolute; z-index: 3; top: 52%; left: 48%; width: 22px; height: 22px; border-radius: 50%; background: var(--color-brand); box-shadow: 0 0 0 8px rgba(217,34,59,.2); }.user-location i { position: absolute; inset: 7px; border-radius: 50%; background: #fff; }
 .map-toast { position: absolute; left: 50%; bottom: var(--space-3); z-index: 5; transform: translateX(-50%); width: max-content; max-width: calc(100% - 24px); padding: 8px 12px; border-radius: var(--radius-pill); background: rgba(16,28,61,.9); color: #fff; font-size: var(--text-meta); font-weight: 700; }
 .map-live-legend { display: flex; flex-wrap: wrap; gap: var(--space-3); margin: var(--space-3) 0 var(--space-5); color: var(--color-text-muted); font-size: var(--text-meta); font-weight: 700; }.map-live-legend span { display: inline-flex; align-items: center; gap: 6px; }.legend-line { width: 18px; height: 4px; border-radius: 4px; }.legend-line--blue { background: var(--color-brand); }.legend-line--coral { background: var(--color-status-high); }
 .map-bus-sheet { padding-top: var(--space-4); border-top: 1px solid var(--color-border); }.map-bus-list { display: grid; gap: var(--space-2); margin-top: var(--space-3); }.map-bus-row { width: 100%; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-radius: var(--radius-md); background: var(--color-surface); box-shadow: var(--shadow-card); }.map-bus-row__info { flex: 1; display: grid; gap: 2px; }.map-bus-row strong { font-size: var(--text-body); }.map-bus-row small { color: var(--color-text-muted); font-size: var(--text-meta); }
@@ -1113,7 +1612,7 @@ h1, h2, h3, p {
   flex: 1;
   min-height: 0;
   background:
-    linear-gradient(0deg, rgba(44, 70, 150, 0.03), rgba(44, 70, 150, 0.03)),
+    linear-gradient(0deg, rgba(217, 34, 59, 0.03), rgba(217, 34, 59, 0.03)),
     #eef0f6;
   overflow: hidden;
 }

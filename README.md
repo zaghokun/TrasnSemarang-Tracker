@@ -37,8 +37,12 @@ Lalu buka alamat yang ditampilkan (mis. `http://localhost:8000`).
   service-alert banner (berbeda dari crowding), stop card, bus card, ETA chip, crowding badge
   (ikon bar + label + warna — tidak pernah warna saja), map card simulasi + legenda,
   bottom navigation, tombol primary/ghost, offline banner.
-- **Layar Home:** lokasi/halte terdekat, 3 bus untuk perbandingan ETA vs kepadatan,
-  rekomendasi keputusan, entry live map, info layanan, disclaimer data simulasi.
+- **Layar Home (peta nyata + bottom sheet, inspirasi HomeReference):** **peta
+  OpenStreetMap asli** (Leaflet, gratis tanpa API key) memenuhi seluruh layar dan
+  dapat digeser/zoom, dengan marker halte & bus **simulasi** di atasnya. Bottom sheet
+  dengan header "bubble" merah transparan (blur) + tombol pusatkan lokasi, lalu panel
+  putih berisi judul merah "Bus berikutnya" dan daftar bus bergaya timeline serta
+  pencarian rute. Tombol recenter mengembalikan peta ke koridor utama.
 - **Layar perjalanan utama:** onboarding, detail halte, detail bus, pencarian rute,
   hasil rute, trip aktif, info layanan, Kota Lama mode, profil/pengaturan, dan aksesibilitas.
 - **Tab Rute gabungan:** peta simulasi SVG penuh (koridor dengan pola garis berbeda,
